@@ -326,16 +326,34 @@ function ChatConversation() {
   const [connectionStatus, setConnectionStatus] = useState("idle");
   const [orbState, setOrbState] = useState("listening");
 
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const socketRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioContextRef = useRef(null);
   const processorRef = useRef(null);
+  const workletNodeRef = useRef(null);
   const nextStartTimeRef = useRef(null);
+  const playbackSourcesRef = useRef(new Set());
+  const playbackGenerationRef = useRef(0);
+  const outboundAudioMutedRef = useRef(true);
+  const silentMonitorRef = useRef(null);
   const streamRef = useRef(null);
   const videoRef = useRef(null);
   const [selectedVoice, setSelectedVoice] = useState("aura-2-thalia-en");
   const orbRef = useRef(null);
+  const voiceSessionIdRef = useRef(
+    (typeof crypto !== "undefined" && crypto.randomUUID?.()) ||
+      `session-${Date.now()}`
+  );
+  const telemetryRef = useRef({
+    turnId: null,
+    marks: {
+      t_mic: null,
+      t_stt_partial: null,
+      t_first_token: null,
+      t_first_audio: null,
+    },
+  });
 
   // FIX: Track messages in a Ref so we can read them without re-triggering effects
   const messagesRef = useRef(message);
@@ -343,8 +361,74 @@ function ChatConversation() {
     messagesRef.current = message;
   }, [message]);
 
+  useEffect(() => {
+    outboundAudioMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  const nowMs = () => performance.now();
+
+  const postVoiceTelemetry = useCallback(async () => {
+    const payload = telemetryRef.current;
+    if (!payload?.turnId) return;
+    const marks = payload.marks || {};
+    const hasAnyMark =
+      marks.t_mic != null ||
+      marks.t_stt_partial != null ||
+      marks.t_first_token != null ||
+      marks.t_first_audio != null;
+    if (!hasAnyMark) return;
+
+    try {
+      await fetch("http://localhost:3021/api/voice-telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: voiceSessionIdRef.current,
+          turnId: payload.turnId,
+          marks: payload.marks,
+        }),
+      });
+    } catch (error) {
+      console.warn("Telemetry post failed", error);
+    }
+  }, []);
+
+  const startNewTelemetryTurn = useCallback(() => {
+    telemetryRef.current = {
+      turnId:
+        (typeof crypto !== "undefined" && crypto.randomUUID?.()) ||
+        `turn-${Date.now()}`,
+      marks: {
+        t_mic: null,
+        t_stt_partial: null,
+        t_first_token: null,
+        t_first_audio: null,
+      },
+    };
+  }, []);
+
+  const stopAgentAudioPlayback = useCallback(() => {
+    playbackGenerationRef.current += 1;
+    playbackSourcesRef.current.forEach((source) => {
+      try {
+        source.stop();
+      } catch {
+        // Source might already be ended/stopped.
+      }
+    });
+    playbackSourcesRef.current.clear();
+
+    if (audioContextRef.current) {
+      nextStartTimeRef.current = audioContextRef.current.currentTime;
+    } else {
+      nextStartTimeRef.current = 0;
+    }
+  }, []);
+
   // --- 1. HELPER: PLAY AUDIO ---
   const playAudio = async (blob) => {
+    const playbackGeneration = playbackGenerationRef.current;
+
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext ||
         window.webkitAudioContext)({
@@ -352,6 +436,10 @@ function ChatConversation() {
       });
     }
     const audioCtx = audioContextRef.current;
+    if (telemetryRef.current.marks.t_first_audio == null) {
+      telemetryRef.current.marks.t_first_audio = nowMs();
+      postVoiceTelemetry();
+    }
 
     if (audioCtx.state === "suspended") {
       await audioCtx.resume();
@@ -359,6 +447,9 @@ function ChatConversation() {
 
     // 1. Read the Raw Int16 bytes
     const arrayBuffer = await blob.arrayBuffer();
+    if (playbackGeneration !== playbackGenerationRef.current) {
+      return;
+    }
     const int16Data = new Int16Array(arrayBuffer);
 
     // 2. Convert to Float32 (Standard Browser Format)
@@ -377,6 +468,7 @@ function ChatConversation() {
     const source = audioCtx.createBufferSource();
     source.buffer = buffer;
     source.connect(audioCtx.destination);
+    playbackSourcesRef.current.add(source);
 
     // Schedule playback to ensure chunks play back-to-back without gaps
     const currentTime = audioCtx.currentTime;
@@ -391,7 +483,7 @@ function ChatConversation() {
     nextStartTimeRef.current += buffer.duration;
 
     source.onended = () => {
-      // Optional: logic when a specific chunk finishes
+      playbackSourcesRef.current.delete(source);
     };
   };
 
@@ -422,6 +514,19 @@ function ChatConversation() {
       processorRef.current = null;
     }
 
+    if (workletNodeRef.current) {
+      workletNodeRef.current.port.onmessage = null;
+      workletNodeRef.current.disconnect();
+      workletNodeRef.current = null;
+    }
+
+    if (silentMonitorRef.current) {
+      silentMonitorRef.current.disconnect();
+      silentMonitorRef.current = null;
+    }
+
+    stopAgentAudioPlayback();
+
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
@@ -432,9 +537,10 @@ function ChatConversation() {
     setConnectionStatus("idle");
     setOrbState("listening");
 
+    postVoiceTelemetry();
     deleteMessage();
     setCallEnd(true);
-  }, [deleteMessage]);
+  }, [deleteMessage, postVoiceTelemetry, stopAgentAudioPlayback]);
 
   let isMounted = true;
 
@@ -442,6 +548,7 @@ function ChatConversation() {
     try {
       setConnectionStatus("connecting");
       setCallEnd(false);
+      setIsMuted(false);
       console.log(" Starting Agent Connection...");
       console.log(callEnd);
 
@@ -450,7 +557,10 @@ function ChatConversation() {
         fetch("http://localhost:3021/api/get-voice-context", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ surveyData: survey }),
+          body: JSON.stringify({
+            surveyData: survey,
+            sessionId: voiceSessionIdRef.current,
+          }),
         }),
         fetch("http://localhost:3021/api/get-agent-token"),
       ]);
@@ -521,7 +631,15 @@ function ChatConversation() {
             },
           },
           agent: {
-            listen: { provider: { type: "deepgram", model: "nova-2" } },
+            listen: {
+              provider: {
+                type: "deepgram",
+                model: "flux-general-en",
+                version: "v2",
+                eot_threshold: 0.65,
+                eager_eot_threshold: 0.4,
+              },
+            },
             think: {
               provider: { type: "open_ai", model: "gpt-4o-mini" },
               prompt: instructions,
@@ -544,35 +662,66 @@ function ChatConversation() {
           },
         };
         socketRef.current.send(JSON.stringify(settings));
-
         //  Setup Audio Processing (Raw PCM)
         const source = audioContextRef.current.createMediaStreamSource(stream);
-        // Buffer size 4096 = ~85ms latency @ 48kHz
-        const processor = audioContextRef.current.createScriptProcessor(
-          4096,
-          1,
-          1
-        );
-        processorRef.current = processor; // Save ref to stop later
+        startNewTelemetryTurn();
+        const silentGain = audioContextRef.current.createGain();
+        silentGain.gain.value = 0;
+        silentMonitorRef.current = silentGain;
+        silentGain.connect(audioContextRef.current.destination);
 
-        source.connect(processor);
-        processor.connect(audioContextRef.current.destination);
-
-        processor.onaudioprocess = (e) => {
-          if (socketRef.current?.readyState === 1) {
-            const inputData = e.inputBuffer.getChannelData(0);
-
-            // 🛠️ CONVERT FLOAT32 (Browser) -> INT16 (Deepgram)
-            const buffer = new ArrayBuffer(inputData.length * 2);
-            const view = new DataView(buffer);
-            for (let i = 0; i < inputData.length; i++) {
-              const s = Math.max(-1, Math.min(1, inputData[i]));
-              // Convert range [-1.0, 1.0] to [-32768, 32767]
-              view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-            }
-
-            socketRef.current.send(buffer);
+        const sendPcmChunk = (inputData) => {
+          if (outboundAudioMutedRef.current) return;
+          if (socketRef.current?.readyState !== 1) return;
+          if (telemetryRef.current.marks.t_mic == null) {
+            telemetryRef.current.marks.t_mic = nowMs();
           }
+          const buffer = new ArrayBuffer(inputData.length * 2);
+          const view = new DataView(buffer);
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+          }
+          socketRef.current.send(buffer);
+        };
+
+        let workletReady = false;
+        try {
+          await audioContextRef.current.audioWorklet.addModule(
+            "/worklets/pcm-capture-processor.js"
+          );
+          const workletNode = new AudioWorkletNode(
+            audioContextRef.current,
+            "pcm-capture-processor",
+            { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 }
+          );
+          workletNodeRef.current = workletNode;
+          source.connect(workletNode);
+          workletNode.connect(silentGain);
+          workletNode.port.onmessage = (event) => {
+            if (!(event.data instanceof Float32Array)) return;
+            sendPcmChunk(event.data);
+          };
+          workletReady = true;
+        } catch (workletError) {
+          console.warn(
+            "AudioWorklet unavailable, falling back to ScriptProcessor",
+            workletError
+          );
+        }
+
+        if (!workletReady) {
+          const processor = audioContextRef.current.createScriptProcessor(
+            1024,
+            1,
+            1
+          );
+          processorRef.current = processor;
+          source.connect(processor);
+          processor.connect(silentGain);
+          processor.onaudioprocess = (e) => {
+            sendPcmChunk(e.inputBuffer.getChannelData(0));
+          };
         };
       };
 
@@ -612,15 +761,45 @@ function ChatConversation() {
           }
 
           if (event.type === "Error") console.error("DEEPGRAM ERROR:", event);
+          if (event.type === "AgentThinking") {
+            if (telemetryRef.current.marks.t_first_token == null) {
+              telemetryRef.current.marks.t_first_token = nowMs();
+              postVoiceTelemetry();
+            }
+          }
 
           if (event.type === "ConversationText") {
+            if (
+              event.role === "user" &&
+              telemetryRef.current.marks.t_stt_partial == null
+            ) {
+              telemetryRef.current.marks.t_stt_partial = nowMs();
+              postVoiceTelemetry();
+            }
+            if (
+              event.role !== "user" &&
+              telemetryRef.current.marks.t_first_token == null
+            ) {
+              telemetryRef.current.marks.t_first_token = nowMs();
+              postVoiceTelemetry();
+            }
             addMessage(
               event.role === "user" ? "user" : "assistant",
               event.content
             );
             //  console.log("text daata", message);
           }
-          if (event.type === "UserStartedSpeaking") setOrbState("listening");
+          if (event.type === "UserStartedSpeaking") {
+            if (telemetryRef.current.marks.t_mic == null) {
+              telemetryRef.current.marks.t_mic = nowMs();
+            }
+            stopAgentAudioPlayback();
+            startNewTelemetryTurn();
+            setOrbState("listening");
+          }
+          if (event.type === "AgentAudioDone") {
+            postVoiceTelemetry();
+          }
         }
       };
     } catch (error) {
