@@ -1,65 +1,92 @@
-import Image from "next/image";
+import { RepoSubmission } from "@/components/repo-submission";
+
+const highlights = [
+  {
+    title: "Decision moments",
+    body: "Surface commits that changed the direction of the project, not just volume of output.",
+  },
+  {
+    title: "Influence graph",
+    body: "Map who created the surface area others built on top of.",
+  },
+  {
+    title: "Explainable narratives",
+    body: "Every role tag and summary links back to evidence.",
+  },
+];
 
 export default function Home() {
+  const backendDocsUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000"}/docs`;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 lg:px-10">
+      <header className="flex items-center justify-between border-b border-white/8 pb-6">
+        <div>
+          <p className="text-xs uppercase tracking-[0.35em] text-amber-200/70">Proof of Thinking</p>
+          <h1 className="mt-2 text-2xl font-semibold text-white">See who shaped the project</h1>
+        </div>
+        <a
+          href={backendDocsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-amber-300/30 hover:bg-amber-300/10"
+        >
+          Backend docs
+        </a>
+      </header>
+
+      <section className="grid flex-1 gap-8 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div className="max-w-3xl space-y-6">
+          <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-300">
+            Git history intelligence
+          </div>
+          <h2 className="text-5xl font-semibold leading-tight text-white md:text-6xl">
+            Turn commits into
+            <span className="text-amber-200"> decision evidence</span>.
+          </h2>
+          <p className="max-w-2xl text-lg leading-8 text-slate-300">
+            Drop in a public GitHub repo. The backend mines commit history, finds key decision
+            moments, builds an influence graph, and returns contributor narratives you can inspect.
           </p>
+
+          <RepoSubmission />
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {highlights.map((item) => (
+              <article
+                key={item.title}
+                className="rounded-[1.5rem] border border-white/8 bg-white/5 p-4 shadow-[0_15px_60px_rgba(0,0,0,0.18)]"
+              >
+                <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{item.body}</p>
+              </article>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        <aside className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.94))] p-6 shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.18),transparent_36%)]" />
+          <div className="relative space-y-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/40">Live pipeline</p>
+            <div className="space-y-3">
+              {["Clone repo", "Classify commits", "Detect decisions", "Build graph", "Narrate impact"].map((item, index) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/5 px-4 py-3"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-300/15 text-sm font-semibold text-amber-200">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-white">{item}</p>
+                    <p className="text-xs text-slate-400">Backend-owned analysis step</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
   );
 }
