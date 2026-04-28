@@ -1,0 +1,1 @@
+import express from 'express'; import { GoogleGenAI } from '@google/genai'; const app = express(); app.listen(3023, () => console.log('listening')); const googleGenAI = new GoogleGenAI({ vertexai: true, project: 'test-project' });

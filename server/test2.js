@@ -1,0 +1,1 @@
+import express from 'express'; import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai'; const app = express(); const srv = app.listen(3025, () => console.log('listening')); process.on('exit', () => console.log('exit called')); const e = new GoogleGenerativeAIEmbeddings({ apiKey: 'test' });
