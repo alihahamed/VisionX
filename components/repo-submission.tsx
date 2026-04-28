@@ -27,7 +27,7 @@ export function RepoSubmission() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-[2rem] border border-white/12 bg-white/8 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+      className="rounded-[2rem] border border-white/12 bg-white/8 p-4"
     >
       <div className="space-y-2">
         <label htmlFor="repo-url" className="text-sm font-medium text-white/70">

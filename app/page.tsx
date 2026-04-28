@@ -55,7 +55,7 @@ export default function Home() {
             {highlights.map((item) => (
               <article
                 key={item.title}
-                className="rounded-[1.5rem] border border-white/8 bg-white/5 p-4 shadow-[0_15px_60px_rgba(0,0,0,0.18)]"
+                className="rounded-[1.5rem] border border-white/8 bg-white/5 p-4"
               >
                 <h3 className="text-sm font-semibold text-white">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-400">{item.body}</p>
@@ -64,7 +64,7 @@ export default function Home() {
           </div>
         </div>
 
-        <aside className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.94))] p-6 shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
+        <aside className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.94))] p-6">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.18),transparent_36%)]" />
           <div className="relative space-y-4">
             <p className="text-xs uppercase tracking-[0.3em] text-white/40">Live pipeline</p>

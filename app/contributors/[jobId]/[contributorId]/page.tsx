@@ -45,7 +45,7 @@ export default async function ContributorPage({
         </Link>
       </div>
 
-      <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+      <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6">
         <div className="flex flex-wrap items-center gap-3">
           <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-1 text-sm text-amber-100">
             {contributor.role}

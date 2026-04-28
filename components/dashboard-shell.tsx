@@ -7,7 +7,7 @@ export function DashboardShell({ data }: { data: AnalysisResult }) {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-[2rem] border border-white/10 bg-white/7 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+      <section className="rounded-[2rem] border border-white/10 bg-white/7 p-6">
         <p className="text-xs uppercase tracking-[0.3em] text-amber-200/70">Master dashboard</p>
         <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>

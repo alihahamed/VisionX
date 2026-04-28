@@ -41,7 +41,8 @@ export function AnalyzingTracker({ jobId }: { jobId: string }) {
           return;
         }
 
-        timer = window.setTimeout(poll, 1200);
+        const delay = document.hidden ? 3500 : 1800;
+        timer = window.setTimeout(poll, delay);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Unable to poll analysis status.");
@@ -64,7 +65,7 @@ export function AnalyzingTracker({ jobId }: { jobId: string }) {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-      <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+      <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6">
         <p className="text-sm uppercase tracking-[0.3em] text-amber-200/70">Analyzing</p>
         <h2 className="mt-3 text-3xl font-semibold text-white">Project history in motion</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
