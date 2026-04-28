@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { getAnalysisJob } from "@/lib/api";
+import { useAnalysisJobQuery } from "@/lib/queries";
 import type { AnalysisJob, JobStatus } from "@/lib/types";
 
 const STEPS: Array<{ key: NonNullable<AnalysisJob["progress_stage"]>; label: string }> = [
@@ -16,52 +16,30 @@ const STEPS: Array<{ key: NonNullable<AnalysisJob["progress_stage"]>; label: str
 
 export function AnalyzingTracker({ jobId }: { jobId: string }) {
   const router = useRouter();
-  const [job, setJob] = useState<AnalysisJob | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const jobQuery = useAnalysisJobQuery(jobId);
+  const job = (jobQuery.data ?? null) as AnalysisJob | null;
 
   useEffect(() => {
-    let cancelled = false;
-    let timer: number | undefined;
-
-    async function poll() {
-      try {
-        const latest = await getAnalysisJob(jobId);
-        if (cancelled) {
-          return;
-        }
-        setJob(latest);
-
-        if (latest.status === "done") {
-          router.replace(`/dashboard/${jobId}`);
-          return;
-        }
-
-        if (latest.status === "failed" || latest.status === "timeout" || latest.status === "invalid_repo") {
-          setError(formatStatusMessage(latest.status));
-          return;
-        }
-
-        const delay = document.hidden ? 3500 : 1800;
-        timer = window.setTimeout(poll, delay);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unable to poll analysis status.");
-        }
-      }
+    if (!job) {
+      return;
     }
-
-    poll();
-
-    return () => {
-      cancelled = true;
-      if (timer) {
-        window.clearTimeout(timer);
-      }
-    };
-  }, [jobId, router]);
+    if (job.status === "done") {
+      router.replace(`/dashboard/${jobId}`);
+      return;
+    }
+    if (job.status === "failed" || job.status === "timeout" || job.status === "invalid_repo") {
+      return;
+    }
+  }, [job, jobId, router]);
 
   const activeStep = job?.progress_stage ?? "ingest";
-  const status = job?.status ?? "queued";
+  const status = (job?.status ?? "queued") as JobStatus;
+  const error =
+    status === "failed" || status === "timeout" || status === "invalid_repo"
+      ? (job?.error_message ?? formatStatusMessage(status))
+      : jobQuery.error instanceof Error
+        ? jobQuery.error.message
+        : null;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">

@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 from datetime import datetime
+from math import ceil
 from time import perf_counter
 from typing import Any
 
@@ -34,7 +35,8 @@ def run_analysis_pipeline(job_id: str, repo_url: str, commits: list[CommitFact])
         "contributors": contributors,
         "warnings": warnings,
     }
-    log_event("analysis.finished", job_id=job_id, duration_ms=int((perf_counter() - started) * 1000))
+    elapsed_ms = ceil((perf_counter() - started) * 1000)
+    log_event("analysis.finished", job_id=job_id, duration_ms=max(elapsed_ms, 1))
     return result
 
 

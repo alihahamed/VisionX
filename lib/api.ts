@@ -1,12 +1,26 @@
-import type { AnalysisJob, AnalysisResult } from "./types";
+import type {
+  AnalysisCreateResponse,
+  AnalysisJob,
+  AnalysisResult,
+  AnalysisSummary,
+} from "./types";
+import {
+  analysisCreateResponseSchema,
+  analysisJobSchema,
+  analysisResultSchema,
+  analysisSummarySchema,
+  contributorResponseSchema,
+  contributorsResponseSchema,
+  timelineSchema,
+} from "./schemas";
 
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+const DEFAULT_API_BASE_URL = "/backend-api";
 
 function apiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
+async function parseResponse(response: Response): Promise<unknown> {
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     const message =
@@ -16,7 +30,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
     throw new Error(message);
   }
 
-  return response.json() as Promise<T>;
+  return response.json();
 }
 
 export async function createAnalysis(repoUrl: string) {
@@ -29,7 +43,8 @@ export async function createAnalysis(repoUrl: string) {
     cache: "no-store",
   });
 
-  return parseResponse<AnalysisJob>(response);
+  const payload = await parseResponse(response);
+  return analysisCreateResponseSchema.parse(payload) as AnalysisCreateResponse;
 }
 
 export async function getAnalysisJob(jobId: string) {
@@ -37,7 +52,8 @@ export async function getAnalysisJob(jobId: string) {
     cache: "no-store",
   });
 
-  return parseResponse<AnalysisJob>(response);
+  const payload = await parseResponse(response);
+  return analysisJobSchema.parse(payload) as AnalysisJob;
 }
 
 export async function getAnalysisResult(jobId: string) {
@@ -45,7 +61,17 @@ export async function getAnalysisResult(jobId: string) {
     cache: "no-store",
   });
 
-  return parseResponse<AnalysisResult>(response);
+  const payload = await parseResponse(response);
+  return analysisResultSchema.parse(payload) as AnalysisResult;
+}
+
+export async function getAnalysisSummary(jobId: string) {
+  const response = await fetch(`${apiBaseUrl()}/api/analysis/${jobId}/summary`, {
+    cache: "no-store",
+  });
+
+  const payload = await parseResponse(response);
+  return analysisSummarySchema.parse(payload) as AnalysisSummary;
 }
 
 export async function getTimeline(jobId: string) {
@@ -53,7 +79,8 @@ export async function getTimeline(jobId: string) {
     cache: "no-store",
   });
 
-  return parseResponse<{ job_id: string; decisions: AnalysisResult["decisions"] }>(response);
+  const payload = await parseResponse(response);
+  return timelineSchema.parse(payload) as { job_id: string; decisions: AnalysisResult["decisions"] };
 }
 
 export async function getGraph(jobId: string) {
@@ -61,7 +88,15 @@ export async function getGraph(jobId: string) {
     cache: "no-store",
   });
 
-  return parseResponse<{ job_id: string; graph: AnalysisResult["graph"] }>(response);
+  const payload = await parseResponse(response);
+  const parsed = analysisResultSchema
+    .pick({ graph: true, job_id: true })
+    .safeParse(payload);
+  if (parsed.success) {
+    return parsed.data as { job_id: string; graph: AnalysisResult["graph"] };
+  }
+  const generic = payload as { job_id: string; graph: AnalysisResult["graph"] };
+  return generic;
 }
 
 export async function getContributor(jobId: string, contributorId: string) {
@@ -72,7 +107,21 @@ export async function getContributor(jobId: string, contributorId: string) {
     },
   );
 
-  return parseResponse<{ job_id: string; contributor: AnalysisResult["contributors"][number] }>(
-    response,
-  );
+  const payload = await parseResponse(response);
+  return contributorResponseSchema.parse(payload) as {
+    job_id: string;
+    contributor: AnalysisResult["contributors"][number];
+  };
+}
+
+export async function getContributors(jobId: string) {
+  const response = await fetch(`${apiBaseUrl()}/api/analysis/${jobId}/contributors`, {
+    cache: "no-store",
+  });
+
+  const payload = await parseResponse(response);
+  return contributorsResponseSchema.parse(payload) as {
+    job_id: string;
+    contributors: AnalysisResult["contributors"];
+  };
 }

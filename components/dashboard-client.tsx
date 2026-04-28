@@ -1,51 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { DashboardShell } from "@/components/dashboard-shell";
-import { getAnalysisResult } from "@/lib/api";
-import type { AnalysisResult } from "@/lib/types";
+import {
+  useAnalysisSummaryQuery,
+  useContributorsQuery,
+  useGraphQuery,
+  useTimelineQuery,
+} from "@/lib/queries";
 
 export function DashboardClient({ jobId }: { jobId: string }) {
-  const [data, setData] = useState<AnalysisResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const summaryQuery = useAnalysisSummaryQuery(jobId);
+  const timelineQuery = useTimelineQuery(jobId);
+  const graphQuery = useGraphQuery(jobId);
+  const contributorsQuery = useContributorsQuery(jobId);
+  const summary = summaryQuery.data;
+  const error = summaryQuery.error instanceof Error ? summaryQuery.error.message : null;
 
-  useEffect(() => {
-    let mounted = true;
-    let timer: number | undefined;
-
-    async function load() {
-      try {
-        const result = await getAnalysisResult(jobId);
-        if (!mounted) {
-          return;
-        }
-        setData(result);
-        setError(null);
-      } catch (err) {
-        if (!mounted) {
-          return;
-        }
-        const message = err instanceof Error ? err.message : "Failed to load dashboard.";
-        setError(message);
-        if (message.toLowerCase().includes("not ready")) {
-          timer = window.setTimeout(load, 800);
-        }
-      }
-    }
-
-    load();
-
-    return () => {
-      mounted = false;
-      if (timer) {
-        window.clearTimeout(timer);
-      }
-    };
-  }, [jobId]);
-
-  if (!data) {
+  if (!summary) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-6 py-8">
         <section className="rounded-[2rem] border border-white/10 bg-white/6 p-8 text-slate-200">
@@ -79,7 +52,12 @@ export function DashboardClient({ jobId }: { jobId: string }) {
           New repo
         </Link>
       </div>
-      <DashboardShell data={data} />
+      <DashboardShell
+        summary={summary}
+        timeline={timelineQuery.data?.decisions}
+        graph={graphQuery.data?.graph}
+        contributors={contributorsQuery.data?.contributors}
+      />
     </main>
   );
 }

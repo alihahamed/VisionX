@@ -22,6 +22,14 @@ export interface AnalysisJob {
   updated_at: string;
   progress_stage?: "ingest" | "classify" | "detect" | "graph" | "narrate";
   message?: string;
+  error_code?: string;
+  error_message?: string;
+}
+
+export interface AnalysisCreateResponse {
+  job_id: string;
+  status: JobStatus;
+  created_at: string;
 }
 
 export interface EvidenceRef {
@@ -84,5 +92,11 @@ export interface AnalysisResult {
   decisions: DecisionMoment[];
   graph: GraphPayload;
   contributors: ContributorProfile[];
+  warnings: string[];
+}
+
+export interface AnalysisSummary {
+  job_id: string;
+  project: ProjectSummary;
   warnings: string[];
 }

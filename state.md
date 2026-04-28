@@ -2,78 +2,110 @@
 
 Last updated: 2026-04-28
 
-## Current State
+## Current Phase
 
-- Repo is on `main`.
-- Frontend plan and backend plan exist in root:
-  - `frontend-plan.md`
-  - `backend-plan.md`
-- Backend FastAPI scaffold is in place under `backend/`.
-- Python is installed and backend endpoints are running successfully in Swagger UI.
-- Frontend is connected to backend endpoints and route flow is implemented:
-  - `/` submit repo URL
-  - `/analyzing/[jobId]` polling tracker
-  - `/dashboard/[jobId]` result dashboard
-  - `/contributors/[jobId]/[contributorId]` profile view
-- Core backend pieces already created:
-  - `backend/app/main.py`
-  - `backend/app/api/routes_analysis.py`
-  - `backend/app/models/schemas.py`
-  - `backend/app/services/orchestrator.py`
-  - `backend/app/services/analyzer.py`
-  - `backend/app/services/git_ingest.py`
-  - `backend/app/storage/jobs.py`
-  - `backend/tests/test_api.py`
-- Extra workflow skills added under `.agent/`:
-  - `BackendTestingSkill.md`
-  - `BackendSecuritySkill.md`
-  - `ApiContractSyncSkill.md`
+Phase: Performance + Reliability Hardening
 
-## What Works
+Goal in this phase:
+- Reduce repo analysis latency variance.
+- Improve dashboard first paint and avoid render stalls.
+- Add guardrails for oversized repositories.
 
-- FastAPI app structure is defined.
-- API routes exist for:
-  - `POST /api/analysis`
-  - `GET /api/analysis/{job_id}`
-  - `GET /api/analysis/{job_id}/result`
-  - `GET /api/analysis/{job_id}/timeline`
-  - `GET /api/analysis/{job_id}/graph`
-  - `GET /api/analysis/{job_id}/contributors/{contributor_id}`
-  - `GET /health`
-- Pydantic schemas exist for jobs, results, graph, contributors, errors, and enums.
-- SQLite job persistence is implemented.
-- GitHub public URL validation and temp repo cleanup logic exist.
-- Basic analysis pipeline logic exists for:
-  - commit classification
-  - decision detection
-  - graph generation
-  - contributor narrative generation
-- Swagger UI can execute all current endpoints successfully.
-- Frontend routing bug fixed: dynamic route params now resolve correctly (no more `/api/analysis/undefined`).
-- Frontend lint is passing.
+## Last Session Work
 
-## Blockers
+### Backend Hotfix
 
-- Production build is still unstable in this environment (`spawn EPERM` / memory issues during `next build`).
-- Dev workflow is usable with webpack fallback scripts, but production build validation is pending on your machine.
+- Replaced PyDriller traversal in the hot path with fast `git log --numstat` parsing in [backend/app/services/git_ingest.py](c:/Users/aliah/Pictures/hackton/backend/app/services/git_ingest.py).
+- Added partial clone flag `--filter=blob:none` to reduce object download size for large repos.
+- Added warm-cache reuse by `repo_url` (30 min default): repeat analysis requests can return `status=done` immediately from cached result in [backend/app/api/routes_analysis.py](c:/Users/aliah/Pictures/hackton/backend/app/api/routes_analysis.py) and [backend/app/storage/jobs.py](c:/Users/aliah/Pictures/hackton/backend/app/storage/jobs.py).
+- Tuned fast defaults in [backend/app/core/config.py](c:/Users/aliah/Pictures/hackton/backend/app/core/config.py):
+  - `max_commits=220`
+  - `clone_depth=180`
+  - `max_repo_runtime_seconds=12`
+  - `cache_ttl_minutes=30`
+- Exposed `error_code` and `error_message` from job status responses:
+  - [backend/app/models/schemas.py](c:/Users/aliah/Pictures/hackton/backend/app/models/schemas.py)
+  - [backend/app/api/routes_analysis.py](c:/Users/aliah/Pictures/hackton/backend/app/api/routes_analysis.py)
+- Frontend analyzing screen now shows backend failure detail instead of generic "smaller repo" text:
+  - [components/analyzing-tracker.tsx](c:/Users/aliah/Pictures/hackton/components/analyzing-tracker.tsx)
+  - [lib/types.ts](c:/Users/aliah/Pictures/hackton/lib/types.ts)
+  - [lib/schemas.ts](c:/Users/aliah/Pictures/hackton/lib/schemas.ts)
 
-## Next Steps
+### Backend
 
-1. Run full end-to-end validation with 2-3 real public repos and record expected outputs.
-2. Improve analysis quality (decision detection and contributor role heuristics) using observed false positives/negatives.
-3. Add backend test coverage for:
-  - successful analysis lifecycle
-  - invalid repo
-  - timeout/failure branches
-  - result-not-ready (`409`) behavior
-4. Add frontend UX hardening:
-  - dashboard empty states
-  - explicit retry actions on failures
-  - pagination or limits if graph/decision lists are large
-5. Resolve production build stability on local machine and confirm `npm run build` cleanly.
-6. Add minimal deployment setup (`.env` templates, start commands, and runbook).
-7. If public demo: add basic rate limiting and stricter backend URL guards.
+- Added ingest fast path controls:
+  - shallow clone (`clone_depth`, default `300`)
+  - clone flags: `--no-tags --single-branch`
+  - repository size cap (`max_repo_size_mb`, default `120`)
+- Added config keys in [backend/app/core/config.py](c:/Users/aliah/Pictures/hackton/backend/app/core/config.py).
+- Updated orchestrator ingest call to pass limits in [backend/app/services/orchestrator.py](c:/Users/aliah/Pictures/hackton/backend/app/services/orchestrator.py).
+- Added lightweight slice endpoints in [backend/app/api/routes_analysis.py](c:/Users/aliah/Pictures/hackton/backend/app/api/routes_analysis.py):
+  - `GET /api/analysis/{job_id}/summary`
+  - `GET /api/analysis/{job_id}/contributors`
 
-## Recommended Immediate Action
+### Frontend
 
-Run an end-to-end test now: submit a real repo, wait for `done`, verify timeline/graph/contributor pages, and capture the first list of analysis-quality fixes.
+- Added typed summary/contributors slice contracts in:
+  - [lib/types.ts](c:/Users/aliah/Pictures/hackton/lib/types.ts)
+  - [lib/schemas.ts](c:/Users/aliah/Pictures/hackton/lib/schemas.ts)
+  - [lib/api.ts](c:/Users/aliah/Pictures/hackton/lib/api.ts)
+  - [lib/queries.ts](c:/Users/aliah/Pictures/hackton/lib/queries.ts)
+- Refactored dashboard to progressive loading in [components/dashboard-client.tsx](c:/Users/aliah/Pictures/hackton/components/dashboard-client.tsx):
+  - load summary first
+  - load timeline/graph/contributors independently
+- Submit flow in [components/repo-submission.tsx](c:/Users/aliah/Pictures/hackton/components/repo-submission.tsx) now routes directly to dashboard when backend returns cached `status=done`.
+- Added graph safety mode in [components/dashboard-shell.tsx](c:/Users/aliah/Pictures/hackton/components/dashboard-shell.tsx):
+  - initial cap: top `80` edges
+  - optional full graph load button
+
+### Test / Validation
+
+- Backend tests updated for orchestrator symbol rename in [backend/tests/test_api.py](c:/Users/aliah/Pictures/hackton/backend/tests/test_api.py).
+- Validation status:
+  - `npm run lint` -> pass
+  - `npx tsc --noEmit` -> pass
+  - `pytest` -> 9 passed (1 warning from `.pytest_cache` permission)
+  - Hotfix validation: `npm run lint`, `npx tsc --noEmit`, and `pytest` all pass.
+
+## Decisions Made
+
+1. Use shallow clone by default instead of full clone.
+Reason: fastest consistent ingest improvement for public GitHub repos.
+
+2. Add hard repository size cap.
+Reason: avoid long-tail stalls and memory spikes that degrade UX.
+
+3. Shift dashboard from monolithic `/result` fetch to progressive slices.
+Reason: first paint should not wait for graph and contributors payload.
+
+4. Add graph safe mode with capped edges by default.
+Reason: prevent heavy graph render from blocking or freezing UI.
+
+5. Keep full graph available via explicit user action.
+Reason: preserve completeness without penalizing baseline reliability.
+
+6. Remove PyDriller from request hot path.
+Reason: PyDriller prints commit traversal and performs heavier diff mining; `git log --numstat` is faster and stable enough for MVP metadata extraction.
+
+7. Reuse fresh results for same repository URL.
+Reason: repeated runs should feel instant and avoid unnecessary clone/analysis cost.
+
+## Open Questions
+
+1. Should oversized repos return `invalid_repo` or a dedicated `repo_too_large` error code?
+Current behavior: message indicates size cap breach; code maps through existing failure bucket.
+
+2. What default caps should be product policy?
+Current defaults: `clone_depth=300`, `max_repo_size_mb=120`, `max_commits=500`.
+
+3. Should we add a background worker queue (RQ/Celery/Arq) now or after demo stabilization?
+Current system still uses `BackgroundTasks`.
+
+4. Should dashboard contributor cards load from summary metadata first (count placeholders) before contributor payload arrives?
+Current behavior: cards appear when contributor slice resolves.
+
+5. Do you want a strict retry/backoff policy on slice endpoints for flaky local networks?
+Current behavior: queries run with `retry: false` except status polling flow.
+
+6. Should big repos be sampled by latest commits only or by mixed time windows?
+Current behavior: latest shallow history with max commit cap.

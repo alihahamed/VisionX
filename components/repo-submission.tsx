@@ -3,24 +3,26 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { createAnalysis } from "@/lib/api";
+import { useCreateAnalysisMutation } from "@/lib/queries";
 
 export function RepoSubmission() {
   const router = useRouter();
   const [repoUrl, setRepoUrl] = useState("https://github.com/alihahamed/VisionX");
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createMutation = useCreateAnalysisMutation();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setIsSubmitting(true);
     try {
-      const job = await createAnalysis(repoUrl.trim());
+      const job = await createMutation.mutateAsync(repoUrl.trim());
+      if (job.status === "done") {
+        router.push(`/dashboard/${job.job_id}`);
+        return;
+      }
       router.push(`/analyzing/${job.job_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start analysis.");
-      setIsSubmitting(false);
     }
   }
 
@@ -44,10 +46,10 @@ export function RepoSubmission() {
           />
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={createMutation.isPending}
             className="h-12 rounded-2xl bg-amber-300 px-5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Analyzing..." : "Analyze repo"}
+            {createMutation.isPending ? "Analyzing..." : "Analyze repo"}
           </button>
         </div>
       </div>

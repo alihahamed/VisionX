@@ -3,7 +3,7 @@ import sqlite3
 import threading
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -121,3 +121,24 @@ class JobsRepository:
             return None
         data = job.get("result_json")
         return json.loads(data) if data else None
+
+    def get_recent_done_result_for_repo(self, repo_url: str, ttl_minutes: int) -> dict[str, Any] | None:
+        cutoff = (datetime.now(timezone.utc) - timedelta(minutes=ttl_minutes)).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT result_json
+                FROM jobs
+                WHERE repo_url = ?
+                  AND status = ?
+                  AND result_json IS NOT NULL
+                  AND updated_at >= ?
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (repo_url, JobStatus.done.value, cutoff),
+            ).fetchone()
+        if not row:
+            return None
+        payload = row["result_json"]
+        return json.loads(payload) if payload else None

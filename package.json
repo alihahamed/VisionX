@@ -6,12 +6,18 @@
     "dev": "set NODE_OPTIONS=--max-old-space-size=4096&& next dev --webpack",
     "build": "set NODE_OPTIONS=--max-old-space-size=4096&& next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "gen:types": "node scripts/generate-api-types.mjs",
+    "ci:frontend": "npm run lint && npm run typecheck"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.100.5",
+    "@xyflow/react": "^12.10.2",
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -27,6 +27,8 @@ def _job_response(job: dict) -> AnalysisJobResponse:
         updated_at=datetime.fromisoformat(job["updated_at"]),
         progress_stage=job.get("progress_stage"),
         message=job.get("message"),
+        error_code=job.get("error_code"),
+        error_message=job.get("error_message"),
     )
 
 
@@ -41,6 +43,7 @@ def create_analysis(
     background_tasks: BackgroundTasks,
     orchestrator: AnalysisOrchestrator = Depends(AnalysisOrchestrator.dep),
 ):
+    repo_url = str(body.repo_url)
     if not validate_public_github_url(str(body.repo_url), orchestrator.settings.github_host):
         raise HTTPException(
             status_code=400,
@@ -53,7 +56,20 @@ def create_analysis(
             ).model_dump(),
         )
 
-    job = orchestrator.jobs.create_job(str(body.repo_url))
+    cached = orchestrator.jobs.get_recent_done_result_for_repo(
+        repo_url,
+        orchestrator.settings.cache_ttl_minutes,
+    )
+    job = orchestrator.jobs.create_job(repo_url)
+    if cached:
+        cached["job_id"] = job["job_id"]
+        orchestrator.jobs.set_result(job["job_id"], cached)
+        return AnalysisCreateResponse(
+            job_id=job["job_id"],
+            status=JobStatus.done,
+            created_at=datetime.fromisoformat(job["created_at"]),
+        )
+
     background_tasks.add_task(orchestrator.run_job, job["job_id"])
     return AnalysisCreateResponse(
         job_id=job["job_id"],
@@ -137,6 +153,22 @@ def get_timeline(job_id: str, jobs: JobsRepository = Depends(AnalysisOrchestrato
 def get_graph(job_id: str, jobs: JobsRepository = Depends(AnalysisOrchestrator.jobs_dep)):
     result = _require_result(jobs, job_id)
     return {"job_id": job_id, "graph": result["graph"]}
+
+
+@router.get("/{job_id}/summary")
+def get_summary(job_id: str, jobs: JobsRepository = Depends(AnalysisOrchestrator.jobs_dep)):
+    result = _require_result(jobs, job_id)
+    return {
+        "job_id": job_id,
+        "project": result["project"],
+        "warnings": result["warnings"],
+    }
+
+
+@router.get("/{job_id}/contributors")
+def get_contributors(job_id: str, jobs: JobsRepository = Depends(AnalysisOrchestrator.jobs_dep)):
+    result = _require_result(jobs, job_id)
+    return {"job_id": job_id, "contributors": result["contributors"]}
 
 
 @router.get("/{job_id}/contributors/{contributor_id}")

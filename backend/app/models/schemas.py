@@ -71,6 +71,8 @@ class AnalysisJobResponse(BaseModel):
     updated_at: datetime
     progress_stage: ProgressStage | None = None
     message: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
 
 
 class ErrorDetail(BaseModel):

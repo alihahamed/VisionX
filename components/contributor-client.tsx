@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
-import { getAnalysisResult } from "@/lib/api";
+import { useAnalysisResultQuery } from "@/lib/queries";
 import type { ContributorProfile } from "@/lib/types";
 
 export function ContributorClient({
@@ -13,39 +13,14 @@ export function ContributorClient({
   jobId: string;
   contributorId: string;
 }) {
-  const [contributor, setContributor] = useState<ContributorProfile | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function load() {
-      try {
-        const result = await getAnalysisResult(jobId);
-        if (!mounted) {
-          return;
-        }
-        const item = result.contributors.find((x) => x.contributor_id === contributorId);
-        if (!item) {
-          setError("Contributor not found in result.");
-          return;
-        }
-        setContributor(item);
-        setError(null);
-      } catch (err) {
-        if (!mounted) {
-          return;
-        }
-        setError(err instanceof Error ? err.message : "Unable to load contributor profile.");
-      }
+  const resultQuery = useAnalysisResultQuery(jobId);
+  const contributor = useMemo<ContributorProfile | null>(() => {
+    if (!resultQuery.data) {
+      return null;
     }
-
-    load();
-
-    return () => {
-      mounted = false;
-    };
-  }, [jobId, contributorId]);
+    return resultQuery.data.contributors.find((x) => x.contributor_id === contributorId) ?? null;
+  }, [resultQuery.data, contributorId]);
+  const error = resultQuery.error instanceof Error ? resultQuery.error.message : null;
 
   if (!contributor) {
     return (

@@ -16,7 +16,7 @@ const highlights = [
 ];
 
 export default function Home() {
-  const backendDocsUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000"}/docs`;
+  const backendDocsUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "/backend-api"}/docs`;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 lg:px-10">
