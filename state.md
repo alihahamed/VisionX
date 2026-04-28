@@ -10,6 +10,11 @@ Last updated: 2026-04-28
   - `backend-plan.md`
 - Backend FastAPI scaffold is in place under `backend/`.
 - Python is installed and backend endpoints are running successfully in Swagger UI.
+- Frontend is connected to backend endpoints and route flow is implemented:
+  - `/` submit repo URL
+  - `/analyzing/[jobId]` polling tracker
+  - `/dashboard/[jobId]` result dashboard
+  - `/contributors/[jobId]/[contributorId]` profile view
 - Core backend pieces already created:
   - `backend/app/main.py`
   - `backend/app/api/routes_analysis.py`
@@ -44,30 +49,31 @@ Last updated: 2026-04-28
   - graph generation
   - contributor narrative generation
 - Swagger UI can execute all current endpoints successfully.
+- Frontend routing bug fixed: dynamic route params now resolve correctly (no more `/api/analysis/undefined`).
+- Frontend lint is passing.
 
 ## Blockers
 
-- Backend runtime not yet verified in this environment.
-- Python toolchain on this machine is the MSYS2 build and is missing a usable `pip`/`venv` flow for this repo.
-- Commands tried:
-  - `python -m pytest -q`
-  - `python -m pip install -r requirements.txt`
-  - `python -m venv .venv`
-- Result:
-  - `pip` missing
-  - `ensurepip` blocked by MSYS2-managed Python policy
-  - `venv` creation fails because pip bootstrap fails
+- Production build is still unstable in this environment (`spawn EPERM` / memory issues during `next build`).
+- Dev workflow is usable with webpack fallback scripts, but production build validation is pending on your machine.
 
 ## Next Steps
 
-1. Wire the Next.js frontend to the live FastAPI endpoints.
-2. Add real sample repo tests so analysis output is not only schema-valid but meaningful.
-3. Tighten backend analysis heuristics and edge cases for better attribution quality.
-4. Add automated backend tests for success and failure paths.
-5. Add frontend polling, dashboard rendering, and contributor profile views.
-6. Add deployment config and environment variables for local/dev/demo use.
-7. If the demo will be public, add rate limits and stronger repo URL validation.
+1. Run full end-to-end validation with 2-3 real public repos and record expected outputs.
+2. Improve analysis quality (decision detection and contributor role heuristics) using observed false positives/negatives.
+3. Add backend test coverage for:
+  - successful analysis lifecycle
+  - invalid repo
+  - timeout/failure branches
+  - result-not-ready (`409`) behavior
+4. Add frontend UX hardening:
+  - dashboard empty states
+  - explicit retry actions on failures
+  - pagination or limits if graph/decision lists are large
+5. Resolve production build stability on local machine and confirm `npm run build` cleanly.
+6. Add minimal deployment setup (`.env` templates, start commands, and runbook).
+7. If public demo: add basic rate limiting and stricter backend URL guards.
 
 ## Recommended Immediate Action
 
-Start frontend-backend integration now: point Next.js at the live FastAPI server and build the dashboard flow end to end.
+Run an end-to-end test now: submit a real repo, wait for `done`, verify timeline/graph/contributor pages, and capture the first list of analysis-quality fixes.

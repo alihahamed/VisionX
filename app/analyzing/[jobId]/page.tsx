@@ -2,11 +2,13 @@ import Link from "next/link";
 
 import { AnalyzingTracker } from "@/components/analyzing-tracker";
 
-export default function AnalyzingPage({
+export default async function AnalyzingPage({
   params,
 }: {
-  params: { jobId: string };
+  params: Promise<{ jobId: string }>;
 }) {
+  const { jobId } = await params;
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 lg:px-10">
       <div className="mb-8 flex items-center justify-between">
@@ -21,7 +23,7 @@ export default function AnalyzingPage({
           New repo
         </Link>
       </div>
-      <AnalyzingTracker jobId={params.jobId} />
+      <AnalyzingTracker jobId={jobId} />
     </main>
   );
 }
