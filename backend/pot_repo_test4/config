@@ -1,9 +1,0 @@
-[core]
-	repositoryformatversion = 1
-	filemode = false
-	bare = true
-	ignorecase = true
-[remote "origin"]
-	url = https://github.com/facebook/react.git
-	promisor = true
-	partialclonefilter = blob:none
