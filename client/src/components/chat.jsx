@@ -34,8 +34,10 @@ import { Mic, MicOff } from "lucide-react";
 import ghost from "../assets/ghost.png";
 import PillNav from "./ui/PillNav";
 import { VoicePicker } from "./voicePicker";
+import { PersonaPicker } from "./personaPicker";
 import CodeInterface from "./codeInterface";
 import logo from "../assets/intervue-logo.png";
+import { useFaceAnalysis } from "../hooks/useFaceAnalysis";
 
 const InterviewBackground = React.memo(() => {
   return (
@@ -108,6 +110,21 @@ const ReportView = ({ interviewReport, handleDownloadReport, handleCloseReport }
       { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power3.out" },
       "-=0.2"
     );
+
+    // Presence score bar animation
+    if (interviewReport?.presence) {
+      tl.fromTo(
+        ".report-presence",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        "-=0.3"
+      ).fromTo(
+        ".presence-bar-fill",
+        { width: "0%" },
+        { width: `${interviewReport.presence.presenceScore}%`, duration: 1.2, ease: "power2.out" },
+        "-=0.2"
+      );
+    }
   }, { scope: containerRef });
 
   if (!interviewReport) return null;
@@ -156,6 +173,48 @@ const ReportView = ({ interviewReport, handleDownloadReport, handleCloseReport }
             </div>
           ))}
         </div>
+
+        {/* Presence & Body Language Section */}
+        {interviewReport.presence ? (
+          <div className="report-presence border border-white/5 p-8 bg-black hover:border-white/10 transition-colors duration-500 relative z-10 space-y-6">
+            <h3 className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em]">Presence & Body Language</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <p className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em]">Eye Contact</p>
+                <p className="text-3xl font-extralight">{interviewReport.presence.eyeContact}<span className="text-lg text-white/30">%</span></p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em]">Head Stability</p>
+                <p className="text-3xl font-extralight">{interviewReport.presence.headStability}<span className="text-lg text-white/30">%</span></p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em]">Engagement</p>
+                <p className="text-3xl font-extralight">{interviewReport.presence.engagement}<span className="text-lg text-white/30">%</span></p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em]">Composite Presence Score</span>
+                <span className="text-sm font-light text-white">{interviewReport.presence.presenceScore}/100</span>
+              </div>
+              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "presence-bar-fill h-full rounded-full transition-colors",
+                    interviewReport.presence.presenceScore >= 70 ? "bg-emerald-500" :
+                    interviewReport.presence.presenceScore >= 40 ? "bg-amber-500" : "bg-rose-500"
+                  )}
+                  style={{ width: 0 }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="report-presence border border-white/5 p-8 bg-black relative z-10">
+            <h3 className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em] mb-4">Presence & Body Language</h3>
+            <p className="text-slate-600 text-sm font-light">Camera data unavailable for this session.</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
           <div className="report-section border border-white/5 p-8 bg-black hover:border-white/10 transition-colors duration-500">
@@ -451,6 +510,10 @@ function ChatConversation() {
   const streamRef = useRef(null);
   const videoRef = useRef(null);
   const [selectedVoice, setSelectedVoice] = useState("aura-2-thalia-en");
+  const [selectedPersona, setSelectedPersona] = useState("balanced");
+
+  // Face analysis hook — tracks eye contact, head stability, engagement while call is active
+  const { liveMetrics, getPresenceReport } = useFaceAnalysis(videoRef, !callEnd);
   const [codeTask, setCodeTask] = useState({
     title: "Coding Challenge",
     prompt: "Implement requested function. Handle edge cases.",
@@ -843,7 +906,7 @@ function ChatConversation() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            surveyData: survey,
+            surveyData: { ...survey, persona: selectedPersona },
             sessionId: voiceSessionIdRef.current,
           }),
         }),
@@ -1097,10 +1160,9 @@ function ChatConversation() {
           // console.log("event", event);
 
           if (event.type === "FunctionCallRequest") {
-            // function request
-            const call = event.functions[0];
-            // console.log("name", call.name)
-            // console.log("id", call.id)
+            // Process ALL functions in the batch (AI may send multiple in one message)
+            const functions = event.functions || [];
+            for (const call of functions) {
 
             if (call.name === "enable_coding_mode") {
               let parsedArgs = {};
@@ -1130,11 +1192,7 @@ function ChatConversation() {
                   language: nextTask.language,
                 }),
               };
-              // console.log("function response", JSON.stringify(response));
-              // console.log(
-              //   "succesfully recieved the function call, coding mode enabled"
-              // );
-              socketRef.current.send(JSON.stringify(response));
+              socketRef.current?.send(JSON.stringify(response));
             }
 
             if (call.name === "code_review_result") {
@@ -1151,7 +1209,7 @@ function ChatConversation() {
                 name: call.name,
                 content: JSON.stringify({ status: "ok" }),
               };
-              socketRef.current.send(JSON.stringify(response));
+              socketRef.current?.send(JSON.stringify(response));
             }
 
             if (call.name === "finalize_interview_report") {
@@ -1162,6 +1220,13 @@ function ChatConversation() {
                 parsedArgs = {};
               }
               const report = normalizeReport(parsedArgs);
+
+              // Merge presence/body language data from face analysis
+              const presenceData = getPresenceReport();
+              if (presenceData) {
+                report.presence = presenceData;
+              }
+
               setInterviewReport(report);
               try {
                 localStorage.setItem("lastInterviewReport", JSON.stringify(report));
@@ -1172,7 +1237,7 @@ function ChatConversation() {
                 name: call.name,
                 content: JSON.stringify({ status: "ok", report_ready: true }),
               };
-              socketRef.current.send(JSON.stringify(response));
+              socketRef.current?.send(JSON.stringify(response));
             }
 
             if (call.name === "end_interview") {
@@ -1188,7 +1253,7 @@ function ChatConversation() {
                 name: call.name,
                 content: JSON.stringify({ status: "ok", ui: "report_opened" }),
               };
-              socketRef.current.send(JSON.stringify(response));
+              socketRef.current?.send(JSON.stringify(response));
 
               const closing = parsedArgs?.closing_message || "Interview complete. Opening your report now.";
               pendingInterviewEndRef.current = true;
@@ -1201,6 +1266,8 @@ function ChatConversation() {
                 finalizeInterviewUi();
               }, 4500);
             }
+
+            } // end for loop
           }
 
           if (event.type === "FunctionCallResponse" && event.name === "enable_coding_mode") {
@@ -1544,7 +1611,7 @@ function ChatConversation() {
                                 agentState={orbState}
                               />
                             </div>
-                            <div className="border border-zinc-700 rounded-xl bg-zinc-900/50 flex justify-center items-center aspect-video overflow-hidden shadow-lg">
+                            <div className="border border-zinc-700 rounded-xl bg-zinc-900/50 flex justify-center items-center aspect-video overflow-hidden shadow-lg relative">
                               <video
                                 ref={videoRef}
                                 muted
@@ -1552,6 +1619,19 @@ function ChatConversation() {
                                 playsInline
                                 autoPlay
                               />
+                              {/* Live presence HUD */}
+                              {!callEnd && liveMetrics && (
+                                <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/60 backdrop-blur-sm border border-white/10 rounded-full transition-opacity duration-500">
+                                  <span className="text-[10px] text-zinc-400">👁</span>
+                                  <span className={cn(
+                                    "text-xs font-medium tabular-nums",
+                                    liveMetrics.eyeContact >= 70 ? "text-emerald-400" :
+                                    liveMetrics.eyeContact >= 40 ? "text-amber-400" : "text-rose-400"
+                                  )}>
+                                    {liveMetrics.eyeContact}%
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="text-center pt-6 px-8">
@@ -1598,6 +1678,14 @@ function ChatConversation() {
                         <VoicePicker
                           value={selectedVoice}
                           onValueChange={setSelectedVoice}
+                          disabled={!callEnd}
+                        />
+                      </div>
+
+                      <div className="w-[170px] border-l border-white/10 pl-3">
+                        <PersonaPicker
+                          value={selectedPersona}
+                          onValueChange={setSelectedPersona}
                           disabled={!callEnd}
                         />
                       </div>

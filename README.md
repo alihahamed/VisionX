@@ -1,91 +1,96 @@
-# VisionX (Intervue AI)
+# VisionX — Intervue AI
 
-Intervue AI is an advanced AI-powered technical interviewing platform designed to conduct live, conversational, and interactive coding interviews. Utilizing the latest advances in large language models, voice AI, and modern web technologies, Intervue AI offers a frictionless experience for conducting highly realistic technical interviews.
+AI-powered technical interview platform that conducts live, adaptive voice interviews with real-time coding challenges, body language analysis, and automated evaluation reports.
 
-## Features
+## What It Does
 
-- **Conversational Voice AI**: Features ultra-low latency real-time voice conversations acting as the technical interviewer.
-- **Interactive Coding Mode**: Transition smoothly from verbal Q&A to hands-on coding challenges within a fully integrated live code editor.
-- **Real-time Live Subtitles**: Track the conversation in real-time, with internal system commands intelligently filtered out to keep the candidate UI clean.
-- **Automated Performance Reports**: Upon completing the interview, candidates receive a beautifully animated, high-fidelity report detailing their performance across multiple dimensions (System Thinking, Fundamentals, Code Quality, etc.).
-- **Polished Premium UI**: Implements a sleek dark-mode, editorial-style layout using premium typography, glassmorphism, and sophisticated GSAP staggered animations.
+- **Live Voice Interview** — Real-time conversational AI interviewer using Deepgram's voice agent with ultra-low latency STT/TTS and GPT-4o-mini for reasoning
+- **Adaptive Difficulty** — Dynamically adjusts question depth based on candidate responses, experience level, and tech stack
+- **Interactive Coding Mode** — Mid-interview coding challenges with a live code editor, multi-attempt evaluation, and AI-powered code review
+- **Body Language Analysis** — Real-time face tracking via MediaPipe FaceLandmarker (browser-side, zero server cost) measuring eye contact, head stability, and facial engagement
+- **Interviewer Personas** — 4 selectable AI personalities: Balanced, Strict Architect, Friendly Mentor, Devil's Advocate — each with distinct communication styles injected into the system prompt
+- **Automated Reports** — Structured evaluation across 6 rubric dimensions with strengths, gaps, evidence, and next steps, animated with GSAP
 
 ## Tech Stack
 
-### Client (Frontend)
-- **Framework**: React 19 + Vite
-- **Styling**: Tailwind CSS v4
-- **Animations**: GSAP (@gsap/react), Framer Motion
-- **UI Components**: Radix UI, Lucide React
-- **Routing**: React Router DOM
-
-### Server (Backend)
-- **Framework**: Express.js (Node.js)
-- **AI Intelligence**: Google Gemini API (`@google/genai`)
-- **Speech-to-Text / Audio processing**: Deepgram SDK
-- **Text-to-Speech**: MS Edge TTS (`node-edge-tts`)
-- **Database & Storage**: Supabase
-- **Additional LLM Tooling**: Langchain, Groq SDK
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite, Tailwind CSS v4 |
+| Animations | GSAP + @gsap/react, Framer Motion |
+| UI Components | Radix UI (shadcn), Lucide React |
+| Voice Agent | Deepgram SDK (STT + TTS + Agent) |
+| LLM (Think) | OpenAI GPT-4o-mini (via Deepgram Agent) |
+| Knowledge Base | Google Gemini API (@google/genai) |
+| Face Analysis | MediaPipe FaceLandmarker (@mediapipe/tasks-vision) |
+| Database | Supabase |
+| Server | Express.js (Node.js) |
 
 ## Prerequisites
 
-Before getting started, make sure you have the following installed:
-- [Node.js](https://nodejs.org/en/) (v18 or higher recommended)
-- `npm`
+- [Node.js](https://nodejs.org/) v18+
+- API keys for: **Deepgram**, **Google Gemini**, **Supabase**
 
-You will also need active API keys for:
-- Google Gemini (or OpenAI)
-- Deepgram
-- Supabase
+## Setup
 
-## Getting Started
-
-The project is structured as a monorepo containing both the `client` and `server` folders.
-
-### 1. Backend Setup
-
-Open a terminal and navigate to the `server` directory:
+### Backend
 
 ```bash
 cd server
 npm install --legacy-peer-deps
 ```
 
-Create a `.env` file in the `server` directory and configure your environment variables:
+Create `server/.env`:
 ```env
-# Example .env config
-PORT=5000
-DEEPGRAM_API_KEY=your_deepgram_api_key
-GEMINI_API_KEY=your_gemini_api_key
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
+PORT=3021
+DEEPGRAM_API_KEY=your_key
+GEMINI_API_KEY=your_key
+SUPABASE_URL=your_url
+SUPABASE_ANON_KEY=your_key
 ```
 
-Start the backend server:
 ```bash
 npm run start
 ```
 
-### 2. Frontend Setup
-
-Open a new terminal and navigate to the `client` directory:
+### Frontend
 
 ```bash
 cd client
 npm install
 ```
 
-Create a `.env` file in the `client` directory if required by your configuration (e.g., matching the backend API URLs).
-
-Start the frontend development server:
 ```bash
 npm run dev
 ```
 
-### 3. Start Interviewing
-Open your browser to the URL provided by Vite (typically `http://localhost:5173`). Click "Start Call" to initiate the AI interviewer and begin the experience!
+Open `http://localhost:5173`, complete the survey, select your voice + persona, and start the interview.
 
-## Development & Architecture
+## Architecture
 
-- **`client/src/components/chat.jsx`**: Acts as the central hub managing the interview lifecycle, websocket connections, live coding mode transitions, and the final animated evaluation report.
-- **`server/services/voiceInstructions.js`**: Contains the core logic and system prompts defining the AI's persona, its rules for triggering the coding interface, and instructions for outputting structured JSON for the final report.
+```
+client/
+├── src/components/
+│   ├── chat.jsx              # Interview lifecycle orchestrator
+│   ├── codeInterface.jsx     # Live code editor overlay
+│   ├── surveyModal.jsx       # Pre-interview survey flow
+│   ├── voicePicker.jsx       # TTS voice selector
+│   └── personaPicker.jsx     # AI persona selector
+├── src/hooks/
+│   └── useFaceAnalysis.js    # MediaPipe face tracking hook
+server/
+├── index.js                  # Express + WebSocket server
+├── services/
+│   └── voiceInstructions.js  # System prompt + persona styles
+└── knowledgeBase.js          # RAG context generation via Gemini
+```
+
+### Key Files
+
+- **`chat.jsx`** — Central hub: manages WebSocket connection, audio streams, function call routing, coding mode transitions, presence HUD overlay, and the final animated report
+- **`voiceInstructions.js`** — Dynamic system prompt builder that injects persona-specific communication styles and interview flow rules
+- **`useFaceAnalysis.js`** — Custom React hook running MediaPipe's FaceLandmarker at configurable FPS, computing iris tracking, yaw variance, and blendshape engagement scores
+
+## Documentation
+
+- [`process.md`](./process.md) — Development process, design decisions, and technical deep dives
+- [`overview.md`](./overview.md) — Full architectural overview and data flow documentation
