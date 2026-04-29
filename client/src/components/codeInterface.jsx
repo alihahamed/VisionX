@@ -4,9 +4,11 @@ import { Code2, Terminal, Send, ChevronLeft, Sparkles } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
-function CodeInterface({ onSubmit, onClose, isOpen }) {
-  const { setCodingMode, message, codingMode } = useChat();
+function CodeInterface({ onSubmit, onClose, isOpen, task, codingSession }) {
+  const { message, codingMode } = useChat();
   const [code, setCode] = useState("");
+  const [submitState, setSubmitState] = useState("idle"); // idle | submitting | success | error
+  const [submitMessage, setSubmitMessage] = useState("");
   const containerRef = useRef(null);
   const contentRef = useRef(null);
   const tlRef = useRef(null) // creating a ref to store the timeline
@@ -16,13 +18,26 @@ function CodeInterface({ onSubmit, onClose, isOpen }) {
   //   }, [codingMode])
 
   const instruction = useMemo(() => {
+    if (task?.prompt) return task.prompt;
     const aiMessage = message.filter((m) => m.sender === "assistant");
     const recentMessages = aiMessage.slice(-3).reverse(); 
     const longMessage = recentMessages.find((m) => m.text.length > 50);
     return longMessage
       ? longMessage.text
       : recentMessages[0]?.text || "Ready to code.";
+  }, [message, task?.prompt]);
+
+  const subtitleText = useMemo(() => {
+    const lastMsg = message[message.length - 1];
+    return lastMsg?.text || "Listening...";
   }, [message]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setCode(task?.starterCode || "");
+    setSubmitState("idle");
+    setSubmitMessage("");
+  }, [isOpen, task?.starterCode, task?.prompt]);
 
   useGSAP(() => {
     const tl = gsap.timeline({
@@ -46,6 +61,8 @@ function CodeInterface({ onSubmit, onClose, isOpen }) {
   }, [isOpen]);
 
   const handleExit = () => {
+    setSubmitState("idle");
+    setSubmitMessage("");
     if(tlRef.current){ // if the time line exists then
       tlRef.current.reverse() // reverse the timeline animation on handleExit
     } else {
@@ -53,20 +70,41 @@ function CodeInterface({ onSubmit, onClose, isOpen }) {
     }
   }
 
+  const handleSubmit = async () => {
+    if (submitState === "submitting") return;
+    const trimmed = (code || "").trim();
+    if (!trimmed) {
+      setSubmitState("error");
+      setSubmitMessage("Write code before submit.");
+      return;
+    }
+
+    setSubmitState("submitting");
+    setSubmitMessage("Submitting...");
+    const result = await Promise.resolve(onSubmit(trimmed));
+    if (result?.ok) {
+      setSubmitState("success");
+      setSubmitMessage("Submitted. Interviewer reviewing now.");
+      return;
+    }
+    setSubmitState("error");
+    setSubmitMessage(result?.error || "Submit failed.");
+  };
+
   if (isOpen) {
     console.log("isOpen state", isOpen)
     console.log("coding state", codingMode)
     return (
       <div
         ref={containerRef}
-        className="absolute inset-0 z-[60] flex items-center justify-center p-2 md:p-6 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 z-[70] flex items-center justify-center p-0 bg-black/65 backdrop-blur-sm"
       >
         <div
           ref={contentRef}
-          className="relative w-full h-full max-w-5xl flex flex-col md:flex-row bg-[#0c0c0e] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+          className="relative w-screen h-screen flex flex-col md:flex-row bg-[#0c0c0e] border-0 rounded-none shadow-none overflow-hidden"
         >
           {/* --- LEFT SIDEBAR: PROBLEM CONTEXT (Desktop Only) --- */}
-          <div className="hidden md:flex flex-col w-72 bg-zinc-900/30 border-r border-white/5 p-6">
+          <div className="hidden md:flex flex-col w-[360px] bg-zinc-900/30 border-r border-white/5 p-6">
             <div className="flex items-center gap-2 mb-8">
               <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-emerald-400" />
@@ -76,11 +114,29 @@ function CodeInterface({ onSubmit, onClose, isOpen }) {
               </span>
             </div>
 
-            <h3 className="text-zinc-100 font-semibold mb-3">Instructions</h3>
+            <h3 className="text-zinc-100 font-semibold mb-3">
+              {task?.title || "Instructions"}
+            </h3>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <p className="text-zinc-400 text-sm leading-relaxed font-light italic">
                 "{instruction}"
               </p>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-zinc-500">
+                  Attempts left:{" "}
+                  {Math.max(
+                    0,
+                    (codingSession?.maxAttempts || 3) -
+                      (codingSession?.attemptsUsed || 0)
+                  )}{" "}
+                  / {codingSession?.maxAttempts || 3}
+                </p>
+                {codingSession?.lastHint && (
+                  <p className="text-xs text-amber-300/90">
+                    Hint: {codingSession.lastHint}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -113,6 +169,15 @@ function CodeInterface({ onSubmit, onClose, isOpen }) {
                 </span>
                 <ChevronLeft className="w-5 h-5" />
               </button>
+            </div>
+
+            <div className="px-5 py-3 border-b border-white/5 bg-zinc-950/70">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-zinc-500">
+                Subtitle
+              </p>
+              <p className="text-sm text-zinc-200 break-words">
+                {subtitleText}
+              </p>
             </div>
 
             {/* CODE TEXTAREA */}
@@ -150,15 +215,33 @@ function CodeInterface({ onSubmit, onClose, isOpen }) {
                 </span>
               </div>
 
-              <button
-                onClick={() => onSubmit(code)}
-                className="flex items-center gap-3 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] active:scale-95 group"
-              >
+              <div className="flex flex-col items-end gap-2">
+                {submitState !== "idle" && (
+                  <span
+                    className={`text-xs ${
+                      submitState === "error"
+                        ? "text-red-400"
+                        : submitState === "success"
+                        ? "text-emerald-400"
+                        : "text-zinc-400"
+                    }`}
+                  >
+                    {submitMessage}
+                  </span>
+                )}
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitState === "submitting"}
+                  className="flex items-center gap-3 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed text-black rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] active:scale-95 group"
+                >
                 <span className="text-xs font-bold uppercase tracking-tighter">
-                  Execute Solution
+                  {submitState === "submitting"
+                    ? "Submitting..."
+                    : "Execute Solution"}
                 </span>
                 <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-              </button>
+                </button>
+              </div>
             </div>
           </div>
         </div>

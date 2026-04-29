@@ -91,6 +91,134 @@ InterviewBackground.displayName = "InterviewBackground";
 CallNav.displayName = "CallNav";
 HomeNav.displayName = "HomeNav";
 
+const ReportView = ({ interviewReport, handleDownloadReport, handleCloseReport }) => {
+  const containerRef = useRef(null);
+
+  useGSAP(() => {
+    const tl = gsap.timeline();
+    tl.fromTo(
+      containerRef.current,
+      { backgroundColor: "rgba(0,0,0,0)" },
+      { backgroundColor: "rgba(0,0,0,1)", duration: 0.8, ease: "power2.inOut" }
+    )
+    .fromTo(
+      ".report-content",
+      { y: 60, opacity: 0, scale: 0.98 },
+      { y: 0, opacity: 1, scale: 1, duration: 1, ease: "expo.out" },
+      "-=0.4"
+    )
+    .fromTo(
+      ".report-header > *",
+      { y: 20, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: "power2.out" },
+      "-=0.6"
+    )
+    .fromTo(
+      ".report-stat",
+      { opacity: 0, scale: 0.9 },
+      { opacity: 1, scale: 1, duration: 0.5, stagger: 0.05, ease: "back.out(1.2)" },
+      "-=0.4"
+    )
+    .fromTo(
+      ".report-section",
+      { opacity: 0, y: 30 },
+      { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power3.out" },
+      "-=0.2"
+    );
+  }, { scope: containerRef });
+
+  if (!interviewReport) return null;
+
+  return (
+    <div ref={containerRef} className="fixed inset-0 z-[100] bg-black text-white overflow-y-auto pb-20">
+      <div className="report-content max-w-[800px] mx-auto p-8 md:p-14 mt-10 md:mt-16 space-y-10 bg-[#030303] border border-white/5 shadow-2xl relative overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-40 bg-zinc-800/10 blur-[100px] pointer-events-none" />
+
+        <div className="report-header flex flex-col md:flex-row items-start justify-between gap-6 border-b border-white/5 pb-10 relative z-10">
+          <div>
+            <p className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.3em] mb-4">
+              Interview Evaluation Report
+            </p>
+            <h2 className="text-4xl font-light tracking-tight">
+              {interviewReport.candidate.name || "Candidate"} <span className="text-white/30 font-extralight">/ {interviewReport.verdict}</span>
+            </h2>
+            <div className="mt-6 flex items-center gap-3">
+              <span className="text-xs font-light px-4 py-1.5 bg-white/5 text-slate-300 border border-white/5">
+                Overall Score: <span className="font-medium text-white">{interviewReport.overall_score}</span>/100
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleDownloadReport}
+              className="px-6 py-2.5 bg-white text-black text-xs font-medium tracking-wide hover:bg-zinc-200 transition-colors"
+            >
+              Download JSON
+            </button>
+            <button
+              onClick={handleCloseReport}
+              className="px-6 py-2.5 border border-white/20 text-xs font-medium tracking-wide hover:bg-white/5 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 relative z-10">
+          {Object.entries(interviewReport.rubric).map(([k, v]) => (
+            <div key={k} className="report-stat border border-white/5 p-6 bg-black flex flex-col justify-between h-32 hover:border-white/10 transition-colors duration-500">
+              <p className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em]">{k.replaceAll("_", " ")}</p>
+              <p className="text-4xl font-extralight">{v}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+          <div className="report-section border border-white/5 p-8 bg-black hover:border-white/10 transition-colors duration-500">
+            <h3 className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em] mb-6">Strengths</h3>
+            <ul className="space-y-4">
+              {interviewReport.strengths.map((s, i) => (
+                <li key={i} className="flex gap-4 text-slate-300 text-sm font-light leading-relaxed">
+                  <span className="text-emerald-500/50 mt-1 text-[10px]">■</span> <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="report-section border border-white/5 p-8 bg-black hover:border-white/10 transition-colors duration-500">
+            <h3 className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em] mb-6">Gaps</h3>
+            <ul className="space-y-4">
+              {interviewReport.gaps.map((g, i) => (
+                <li key={i} className="flex gap-4 text-slate-300 text-sm font-light leading-relaxed">
+                  <span className="text-rose-500/50 mt-1 text-[10px]">■</span> <span>{g}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="report-section border border-white/5 p-8 bg-black hover:border-white/10 transition-colors duration-500 relative z-10">
+          <h3 className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em] mb-6">Summary</h3>
+          <p className="text-slate-300 font-light text-[15px] leading-relaxed max-w-3xl">
+            {interviewReport.final_summary}
+          </p>
+        </div>
+
+        <div className="report-section border border-white/5 p-8 bg-black hover:border-white/10 transition-colors duration-500 relative z-10">
+          <h3 className="text-slate-500 text-[10px] font-medium uppercase tracking-[0.2em] mb-6">Next Steps</h3>
+          <ul className="space-y-4 text-slate-300 font-light text-[15px]">
+            {interviewReport.next_steps.map((step, i) => (
+              <li key={i} className="flex gap-4 leading-relaxed">
+                <span className="text-white/20 mt-1 text-[10px]">■</span> <span>{step}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function ChatConversation() {
   const {
     addMessage,
@@ -340,6 +468,24 @@ function ChatConversation() {
   const streamRef = useRef(null);
   const videoRef = useRef(null);
   const [selectedVoice, setSelectedVoice] = useState("aura-2-thalia-en");
+  const [codeTask, setCodeTask] = useState({
+    title: "Coding Challenge",
+    prompt: "Implement requested function. Handle edge cases.",
+    language: "JavaScript",
+    starterCode: "",
+    difficulty: "adaptive",
+  });
+  const [codingSession, setCodingSession] = useState({
+    active: false,
+    attemptsUsed: 0,
+    maxAttempts: 3,
+    lastHint: "",
+    status: "idle", // idle | awaiting_evaluation | pass | fail | final_fail
+  });
+  const [liveSubtitle, setLiveSubtitle] = useState("");
+  const [interviewReport, setInterviewReport] = useState(null);
+  const [showReport, setShowReport] = useState(false);
+  const thinkFallbackSentRef = useRef(false);
   const orbRef = useRef(null);
   const voiceSessionIdRef = useRef(
     (typeof crypto !== "undefined" && crypto.randomUUID?.()) ||
@@ -354,6 +500,8 @@ function ChatConversation() {
       t_first_audio: null,
     },
   });
+  const pendingInterviewEndRef = useRef(false);
+  const reportFinalizeTimerRef = useRef(null);
 
   // FIX: Track messages in a Ref so we can read them without re-triggering effects
   const messagesRef = useRef(message);
@@ -363,6 +511,18 @@ function ChatConversation() {
 
   useEffect(() => {
     outboundAudioMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  const handleMuteToggle = useCallback(() => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    outboundAudioMutedRef.current = nextMuted;
+
+    if (streamRef.current) {
+      streamRef.current.getAudioTracks().forEach((track) => {
+        track.enabled = !nextMuted;
+      });
+    }
   }, [isMuted]);
 
   const nowMs = () => performance.now();
@@ -406,6 +566,124 @@ function ChatConversation() {
       },
     };
   }, []);
+
+  const openCodingMode = useCallback((taskPatch = {}) => {
+    setCodeTask((prev) => ({
+      ...prev,
+      ...taskPatch,
+      title: taskPatch.title || prev.title || "Coding Challenge",
+      prompt:
+        taskPatch.prompt ||
+        prev.prompt ||
+        "Implement requested function. Handle edge cases.",
+    }));
+    setCodingSession({
+      active: true,
+      attemptsUsed: 0,
+      maxAttempts: 3,
+      lastHint: "",
+      status: "idle",
+    });
+    setCodingMode(true);
+  }, [setCodingMode]);
+
+  const closeCodingMode = useCallback(() => {
+    setCodingMode(false);
+    setCodingSession((prev) => ({
+      ...prev,
+      active: false,
+      status: "idle",
+    }));
+  }, [setCodingMode]);
+
+  const applyCodeReviewResult = useCallback((resultPayload = {}) => {
+    const normalized = (resultPayload.result || "").toUpperCase();
+    if (normalized === "PASS") {
+      setCodingSession((prev) => ({
+        ...prev,
+        status: "pass",
+        lastHint: "",
+      }));
+      closeCodingMode();
+      return;
+    }
+
+    if (normalized === "FINAL_FAIL") {
+      setCodingSession((prev) => ({
+        ...prev,
+        status: "final_fail",
+        lastHint: resultPayload.hint || resultPayload.solution || prev.lastHint,
+        active: false,
+      }));
+      closeCodingMode();
+      return;
+    }
+
+    const shouldClose = codingSession.attemptsUsed >= codingSession.maxAttempts;
+    setCodingSession((prev) => ({
+      ...prev,
+      status: shouldClose ? "final_fail" : "fail",
+      lastHint: resultPayload.hint || prev.lastHint,
+      active: !shouldClose,
+    }));
+
+    if (shouldClose) {
+      closeCodingMode();
+      if (socketRef.current?.readyState === 1) {
+        socketRef.current.send(
+          JSON.stringify({
+            type: "InjectUserMessage",
+            content:
+              "Candidate has exhausted all coding attempts. Give a brief wrap-up, share concise ideal approach, then say: let's move ahead.",
+          })
+        );
+      }
+    }
+  }, [closeCodingMode, codingSession.attemptsUsed, codingSession.maxAttempts]);
+
+  const parseCodeReviewSignal = (content) => {
+    if (typeof content !== "string") return null;
+    const match = content.match(
+      /\[\[CODE_REVIEW:(PASS|FAIL|FINAL_FAIL)(?:\|HINT:([\s\S]*?))?(?:\|SOLUTION:([\s\S]*?))?\]\]/i
+    );
+    if (!match) return null;
+    return {
+      raw: match[0],
+      result: match[1]?.toUpperCase(),
+      hint: (match[2] || "").trim(),
+      solution: (match[3] || "").trim(),
+      cleaned: content.replace(match[0], "").trim(),
+    };
+  };
+
+  const normalizeReport = (payload = {}) => {
+    const rubric = payload.rubric || {};
+    return {
+      candidate: {
+        name: survey?.userName || "",
+        role: survey?.targetRole || "",
+        stack: survey?.techStack || "",
+        experience: survey?.experience || "",
+      },
+      verdict: payload.verdict || "Pending",
+      overall_score:
+        typeof payload.overall_score === "number" ? payload.overall_score : 0,
+      rubric: {
+        fundamentals: rubric.fundamentals ?? 0,
+        problem_solving: rubric.problem_solving ?? 0,
+        coding: rubric.coding ?? 0,
+        system_thinking: rubric.system_thinking ?? 0,
+        communication: rubric.communication ?? 0,
+        project_depth: rubric.project_depth ?? 0,
+      },
+      strengths: Array.isArray(payload.strengths) ? payload.strengths : [],
+      gaps: Array.isArray(payload.gaps) ? payload.gaps : [],
+      evidence: Array.isArray(payload.evidence) ? payload.evidence : [],
+      next_steps: Array.isArray(payload.next_steps) ? payload.next_steps : [],
+      final_summary: payload.final_summary || "",
+      generated_at: new Date().toISOString(),
+    };
+  };
 
   const stopAgentAudioPlayback = useCallback(() => {
     playbackGenerationRef.current += 1;
@@ -489,6 +767,12 @@ function ChatConversation() {
 
   // resetting everything back to default so that we can start a new call
   const endCall = useCallback(() => {
+    if (reportFinalizeTimerRef.current) {
+      clearTimeout(reportFinalizeTimerRef.current);
+      reportFinalizeTimerRef.current = null;
+    }
+    pendingInterviewEndRef.current = false;
+
     if (socketRef.current) {
       socketRef.current?.close();
       socketRef.current = null;
@@ -542,6 +826,17 @@ function ChatConversation() {
     setCallEnd(true);
   }, [deleteMessage, postVoiceTelemetry, stopAgentAudioPlayback]);
 
+  const finalizeInterviewUi = useCallback(() => {
+    if (!pendingInterviewEndRef.current) return;
+    pendingInterviewEndRef.current = false;
+    if (reportFinalizeTimerRef.current) {
+      clearTimeout(reportFinalizeTimerRef.current);
+      reportFinalizeTimerRef.current = null;
+    }
+    endCall();
+    setShowReport(true);
+  }, [endCall]);
+
   let isMounted = true;
 
   const startAgent = async () => {
@@ -549,6 +844,13 @@ function ChatConversation() {
       setConnectionStatus("connecting");
       setCallEnd(false);
       setIsMuted(false);
+      outboundAudioMutedRef.current = false;
+      setShowReport(false);
+      pendingInterviewEndRef.current = false;
+      if (reportFinalizeTimerRef.current) {
+        clearTimeout(reportFinalizeTimerRef.current);
+        reportFinalizeTimerRef.current = null;
+      }
       console.log(" Starting Agent Connection...");
       console.log(callEnd);
 
@@ -605,6 +907,9 @@ function ChatConversation() {
         });
 
         streamRef.current = stream;
+        stream.getAudioTracks().forEach((track) => {
+          track.enabled = true;
+        });
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -647,10 +952,81 @@ function ChatConversation() {
                 {
                   name: "enable_coding_mode",
                   description:
-                    "Call this Function when you ask a coding question that requires the user to write code.",
+                    "Open coding UI before asking coding task. Use during interview when needed.",
                   parameters: {
                     type: "object",
-                    properties: {},
+                    properties: {
+                      challenge_title: { type: "string" },
+                      prompt: { type: "string" },
+                      language: { type: "string" },
+                      difficulty: { type: "string" },
+                      starter_code: { type: "string" },
+                    },
+                    required: ["prompt"],
+                  },
+                },
+                {
+                  name: "code_review_result",
+                  description:
+                    "Report coding evaluation result after candidate submits solution. Use for pass/fail/hints and attempt flow.",
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      result: { type: "string" }, // PASS | FAIL | FINAL_FAIL
+                      hint: { type: "string" },
+                      solution: { type: "string" },
+                    },
+                    required: ["result"],
+                  },
+                },
+                {
+                  name: "finalize_interview_report",
+                  description:
+                    "Create final structured evaluation report when interview is complete.",
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      verdict: { type: "string" },
+                      overall_score: { type: "number" },
+                      rubric: {
+                        type: "object",
+                        properties: {
+                          fundamentals: { type: "number" },
+                          problem_solving: { type: "number" },
+                          coding: { type: "number" },
+                          system_thinking: { type: "number" },
+                          communication: { type: "number" },
+                          project_depth: { type: "number" },
+                        },
+                      },
+                      strengths: { type: "array", items: { type: "string" } },
+                      gaps: { type: "array", items: { type: "string" } },
+                      evidence: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            area: { type: "string" },
+                            note: { type: "string" },
+                            impact: { type: "string" },
+                          },
+                        },
+                      },
+                      next_steps: { type: "array", items: { type: "string" } },
+                      final_summary: { type: "string" },
+                    },
+                    required: ["verdict", "overall_score", "final_summary"],
+                  },
+                },
+                {
+                  name: "end_interview",
+                  description:
+                    "End interview session after report is ready and move UI to report screen.",
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      closing_message: { type: "string" },
+                    },
                   },
                 },
               ],
@@ -744,13 +1120,32 @@ function ChatConversation() {
             // console.log("id", call.id)
 
             if (call.name === "enable_coding_mode") {
-              setCodingMode(true);
+              let parsedArgs = {};
+              try {
+                parsedArgs = call.arguments ? JSON.parse(call.arguments) : {};
+              } catch {
+                parsedArgs = {};
+              }
+              const nextTask = {
+                title: parsedArgs.challenge_title || "Coding Challenge",
+                prompt:
+                  parsedArgs.prompt ||
+                  "Implement requested function. Handle edge cases.",
+                language: parsedArgs.language || "JavaScript",
+                starterCode: parsedArgs.starter_code || "",
+                difficulty: parsedArgs.difficulty || "adaptive",
+              };
+              openCodingMode(nextTask);
               const response = {
                 type: "FunctionCallResponse",
                 id: call.id,
                 name: call.name,
-                content:
-                  "Coding mode enabled. The user is now seeing the code box.",
+                content: JSON.stringify({
+                  status: "ok",
+                  ui: "coding_mode_opened",
+                  challenge: nextTask.title,
+                  language: nextTask.language,
+                }),
               };
               // console.log("function response", JSON.stringify(response));
               // console.log(
@@ -758,9 +1153,110 @@ function ChatConversation() {
               // );
               socketRef.current.send(JSON.stringify(response));
             }
+
+            if (call.name === "code_review_result") {
+              let parsedArgs = {};
+              try {
+                parsedArgs = call.arguments ? JSON.parse(call.arguments) : {};
+              } catch {
+                parsedArgs = {};
+              }
+              applyCodeReviewResult(parsedArgs);
+              const response = {
+                type: "FunctionCallResponse",
+                id: call.id,
+                name: call.name,
+                content: JSON.stringify({ status: "ok" }),
+              };
+              socketRef.current.send(JSON.stringify(response));
+            }
+
+            if (call.name === "finalize_interview_report") {
+              let parsedArgs = {};
+              try {
+                parsedArgs = call.arguments ? JSON.parse(call.arguments) : {};
+              } catch {
+                parsedArgs = {};
+              }
+              const report = normalizeReport(parsedArgs);
+              setInterviewReport(report);
+              try {
+                localStorage.setItem("lastInterviewReport", JSON.stringify(report));
+              } catch {}
+              const response = {
+                type: "FunctionCallResponse",
+                id: call.id,
+                name: call.name,
+                content: JSON.stringify({ status: "ok", report_ready: true }),
+              };
+              socketRef.current.send(JSON.stringify(response));
+            }
+
+            if (call.name === "end_interview") {
+              let parsedArgs = {};
+              try {
+                parsedArgs = call.arguments ? JSON.parse(call.arguments) : {};
+              } catch {
+                parsedArgs = {};
+              }
+              const response = {
+                type: "FunctionCallResponse",
+                id: call.id,
+                name: call.name,
+                content: JSON.stringify({ status: "ok", ui: "report_opened" }),
+              };
+              socketRef.current.send(JSON.stringify(response));
+
+              const closing = parsedArgs?.closing_message || "Interview complete. Opening your report now.";
+              pendingInterviewEndRef.current = true;
+              if (socketRef.current?.readyState === 1) {
+                socketRef.current.send(
+                  JSON.stringify({ type: "InjectUserMessage", content: `Wrap up now in one short natural closing line: "${closing}".` })
+                );
+              }
+              reportFinalizeTimerRef.current = setTimeout(() => {
+                finalizeInterviewUi();
+              }, 4500);
+            }
           }
 
-          if (event.type === "Error") console.error("DEEPGRAM ERROR:", event);
+          if (event.type === "FunctionCallResponse" && event.name === "enable_coding_mode") {
+            let responseTask = {};
+            try {
+              const parsedContent = event.content ? JSON.parse(event.content) : {};
+              responseTask = {
+                title: parsedContent.challenge || "Coding Challenge",
+                language: parsedContent.language || "JavaScript",
+              };
+            } catch {
+              responseTask = {};
+            }
+            if (!codingSession.active) {
+              openCodingMode(responseTask);
+            }
+          }
+
+          if (event.type === "Error") {
+            console.error("DEEPGRAM ERROR:", event);
+            if (
+              event?.code === "FAILED_TO_THINK" &&
+              !thinkFallbackSentRef.current &&
+              socketRef.current?.readyState === 1
+            ) {
+              thinkFallbackSentRef.current = true;
+              const fallbackSettings = {
+                type: "Settings",
+                agent: {
+                  think: {
+                    provider: { type: "open_ai", model: "gpt-4o-mini" },
+                    prompt:
+                      "You are a concise technical interviewer. Ask one short question at a time. Keep replies under 3 sentences.",
+                  },
+                },
+              };
+              socketRef.current.send(JSON.stringify(fallbackSettings));
+            }
+          }
           if (event.type === "AgentThinking") {
             if (telemetryRef.current.marks.t_first_token == null) {
               telemetryRef.current.marks.t_first_token = nowMs();
@@ -783,10 +1279,44 @@ function ChatConversation() {
               telemetryRef.current.marks.t_first_token = nowMs();
               postVoiceTelemetry();
             }
-            addMessage(
-              event.role === "user" ? "user" : "assistant",
-              event.content
-            );
+            const reviewSignal =
+              event.role === "assistant" ? parseCodeReviewSignal(event.content) : null;
+            const cleanedContent = reviewSignal?.cleaned || event.content;
+
+            const isSystemInjected =
+              cleanedContent?.startsWith("Wrap up now") ||
+              cleanedContent?.startsWith("Candidate has exhausted") ||
+              cleanedContent?.startsWith("Candidate exhausted") ||
+              cleanedContent?.startsWith("Code submission attempt");
+
+            if (!isSystemInjected) {
+              addMessage(
+                event.role === "user" ? "user" : "assistant",
+                cleanedContent
+              );
+              setLiveSubtitle(cleanedContent || "");
+            }
+
+            if (event.role === "assistant") {
+              const lowerContent = (cleanedContent || "").toLowerCase();
+              const looksLikeCodingPrompt =
+                lowerContent.includes("write a function") ||
+                lowerContent.includes("implement") ||
+                lowerContent.includes("solve this") ||
+                lowerContent.includes("coding challenge");
+
+              if (looksLikeCodingPrompt && !codingSession.active) {
+                openCodingMode({
+                  prompt: cleanedContent,
+                  title: "Coding Challenge",
+                });
+              }
+
+              // Backward compatibility if model still emits inline tags.
+              if (reviewSignal && codingSession.active) {
+                applyCodeReviewResult(reviewSignal);
+              }
+            }
             //  console.log("text daata", message);
           }
           if (event.type === "UserStartedSpeaking") {
@@ -799,6 +1329,9 @@ function ChatConversation() {
           }
           if (event.type === "AgentAudioDone") {
             postVoiceTelemetry();
+            if (pendingInterviewEndRef.current) {
+              finalizeInterviewUi();
+            }
           }
         }
       };
@@ -809,19 +1342,80 @@ function ChatConversation() {
   };
 
   const handleCodeSubmit = (codeSnippet) => {
-    if (connectionStatus === "active") {
-      const response = {
-        type: "InjectUserMessage",
-        content: `Here is the code i wrote:\n ${codeSnippet}`,
+    if (connectionStatus !== "active" || socketRef.current?.readyState !== 1) {
+      return {
+        ok: false,
+        error: "Connection not active. Restart call, then submit.",
       };
+    }
 
-      console.log("code submit response", JSON.stringify(response));
+    const trimmedCode = (codeSnippet || "").trim();
+    if (!trimmedCode) {
+      return {
+        ok: false,
+        error: "Code empty. Write solution first.",
+      };
+    }
+
+    if (!codingSession.active) {
+      return {
+        ok: false,
+        error: "Coding round not active.",
+      };
+    }
+
+    if (codingSession.attemptsUsed >= codingSession.maxAttempts) {
+      closeCodingMode();
+      if (socketRef.current?.readyState === 1) {
+        socketRef.current.send(
+          JSON.stringify({
+            type: "InjectUserMessage",
+            content:
+              "Candidate exhausted coding attempts. Provide concise correction and say: let's move ahead.",
+          })
+        );
+      }
+      return {
+        ok: false,
+        error: "Max attempts reached. Coding round closed.",
+      };
+    }
+
+    const nextAttempt = codingSession.attemptsUsed + 1;
+    setCodingSession((prev) => ({
+      ...prev,
+      attemptsUsed: nextAttempt,
+      status: "awaiting_evaluation",
+    }));
+
+    const response = {
+      type: "InjectUserMessage",
+      content:
+        `Code submission attempt ${nextAttempt}/${codingSession.maxAttempts}.\n` +
+        `Challenge: ${codeTask.prompt}\n` +
+        `Language: ${codeTask.language}\n` +
+        `Candidate code:\n${trimmedCode}\n\n` +
+        `Evaluate now. Respond naturally with feedback and one short hint if needed.\n` +
+        `Then call function "code_review_result" with:\n` +
+        `result = PASS | FAIL | FINAL_FAIL\n` +
+        `hint = short hint when FAIL\n` +
+        `solution = concise approach when FINAL_FAIL.\n` +
+        `Do not speak or display any machine tags.`,
+    };
+
+    try {
       socketRef.current.send(JSON.stringify(response));
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Submission failed: ${error?.message || "unknown error"}`,
+      };
     }
   };
 
   const handleCodeExit = () => {
-    setCodingMode(false);
+    closeCodingMode();
   };
 
   // show the interview interface if survey is completed
@@ -859,6 +1453,25 @@ function ChatConversation() {
     );
   }, [endCall, resetInterview]);
 
+  const handleCloseReport = useCallback(() => {
+    setShowReport(false);
+  }, []);
+
+  const handleDownloadReport = useCallback(() => {
+    if (!interviewReport) return;
+    const blob = new Blob([JSON.stringify(interviewReport, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `interview-report-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [interviewReport]);
+
   useGSAP(() => {
     if (survey.isCompleted) {
       console.log("removing shutter properties");
@@ -878,6 +1491,14 @@ function ChatConversation() {
 
       {survey.isCompleted ? (
         <>
+          {showReport && interviewReport ? (
+            <ReportView 
+              interviewReport={interviewReport} 
+              handleDownloadReport={handleDownloadReport} 
+              handleCloseReport={handleCloseReport} 
+            />
+          ) : null}
+
           <div className="absolute top-6 left-6 z-50 flex flex-col items-center gap-1 pointer-events-none select-none">
             {/* Logo Image */}
             {/* <img
@@ -887,17 +1508,32 @@ function ChatConversation() {
             /> */}
 
             {/* Brand Name Text (Positioned Below) */}
-            <span className="text-xs font-bold tracking-[0.2em] uppercase text-white/70">
-              Intervue AI
-            </span>
           </div>
 
-          <div className="h-screen w-screen relative bg-[#09090b] overflow-hidden flex items-center justify-center pb-20">
+          <div className="h-screen w-screen relative bg-[#09090b] overflow-hidden flex items-center justify-center">
             <InterviewBackground />
-            <div className="relative z-10 w-full flex items-center justify-center px-4 pointer-events-none chat-content">
-              <Card className="chat-card-container pointer-events-auto w-full max-w-5xl h-[75vh] min-h-[550px] max-h-[850px] bg-[#09090b]/80 shadow-2xl rounded-xl overflow-hidden backdrop-blur-sm flex flex-col transition-all duration-300">
+            <div className="relative z-10 w-full h-full flex items-center justify-center pointer-events-none chat-content">
+              <Card className="chat-card-container pointer-events-auto w-screen h-screen bg-[#09090b]/80 shadow-2xl rounded-none overflow-hidden backdrop-blur-sm flex flex-col transition-all duration-300">
                 {/* ... Your Chat Content ... */}
                 <div className="flex h-full flex-col z-10 relative w-full">
+                  {codingSession.active && (
+                    <div className="mx-4 mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                      <p className="text-xs uppercase tracking-wide text-emerald-300 font-semibold">
+                        Coding Prompt (Visible Until Round Ends)
+                      </p>
+                      <p className="text-sm text-emerald-100 mt-1">
+                        {codeTask.prompt}
+                      </p>
+                      <p className="text-xs text-emerald-200/80 mt-2">
+                        Attempts left:{" "}
+                        {Math.max(
+                          0,
+                          codingSession.maxAttempts - codingSession.attemptsUsed
+                        )}{" "}
+                        / {codingSession.maxAttempts}
+                      </p>
+                    </div>
+                  )}
                   <Conversation className="flex-1 overflow-y-auto overflow-x-hidden relative">
                     <ConversationContent className="p-2 md:p-4 space-y-4">
                       {/* ... Copied exactly from your existing code ... */}
@@ -918,7 +1554,7 @@ function ChatConversation() {
                       ) : (
                         <>
                           {/* Video/Orb Grid */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-10 w-full max-w-5xl mx-auto">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-10 w-full mx-auto">
                             <div className="border border-zinc-700 rounded-xl bg-zinc-900/50 flex justify-center items-center aspect-video overflow-hidden shadow-lg">
                               <Orb
                                 className="w-full h-[85%] object-cover"
@@ -935,13 +1571,14 @@ function ChatConversation() {
                               />
                             </div>
                           </div>
-                          {message.length > 0 && (
-                            <div className="text-center pt-12">
-                              <p className="text-white">
-                                {message[message.length - 1].text}
-                              </p>
-                            </div>
-                          )}
+                          <div className="text-center pt-6 px-8">
+                            <p className="text-[11px] uppercase tracking-[0.15em] text-zinc-500">
+                              Live Subtitle
+                            </p>
+                            <p className="text-white min-h-[32px]">
+                              {liveSubtitle || message[message.length - 1]?.text || "Listening..."}
+                            </p>
+                          </div>
                         </>
                       )}
                     </ConversationContent>
@@ -951,29 +1588,30 @@ function ChatConversation() {
                   <CodeInterface
                     onSubmit={handleCodeSubmit}
                     isOpen={codingMode}
-                    onClose={() => setCodingMode(false)}
+                    onClose={closeCodingMode}
+                    task={codeTask}
+                    codingSession={codingSession}
                   />
 
                   {/* CONTROLS FOOTER */}
                   <div className="w-full flex justify-center p-4 z-20">
-                    <div className="flex items-center justify-between gap-4 px-5 py-3 bg-[#09090b]/60 border border-white/10 rounded-full shadow-2xl w-full max-w-md">
+                    <div className="flex items-center justify-center gap-3 px-3 py-2 bg-[#09090b]/80 border border-white/10 rounded-full shadow-2xl w-max">
                       {/* Status & Voice Picker (Your existing code) */}
-                      <div className="flex items-center gap-3">
-                        {/* ... status indicator ... */}
+                      <div className="flex items-center gap-2 px-2">
                         <div
                           className={cn(
-                            "w-3 h-3 rounded-full",
+                            "w-2.5 h-2.5 rounded-full",
                             connectionStatus === "active"
                               ? "bg-emerald-500"
                               : "bg-zinc-600"
                           )}
                         />
-                        <span className="text-zinc-500 text-sm font-semibold">
+                        <span className="text-zinc-400 text-xs font-medium uppercase tracking-wider">
                           {connectionStatus === "idle" ? "Idle" : "Active"}
                         </span>
                       </div>
 
-                      <div className="flex-1 max-w-[200px]">
+                      <div className="w-[150px] border-l border-white/10 pl-3">
                         <VoicePicker
                           value={selectedVoice}
                           onValueChange={setSelectedVoice}
@@ -981,16 +1619,16 @@ function ChatConversation() {
                         />
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 border-l border-white/10 pl-3">
                         <button
-                          onClick={() => setIsMuted(!isMuted)}
+                          onClick={handleMuteToggle}
                           disabled={callEnd}
-                          className="p-2.5 bg-zinc-800 rounded-full text-zinc-300"
+                          className="p-2 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-full text-zinc-300"
                         >
                           {isMuted ? (
-                            <MicOff className="w-5 h-5" />
+                            <MicOff className="w-4 h-4" />
                           ) : (
-                            <Mic className="w-5 h-5" />
+                            <Mic className="w-4 h-4" />
                           )}
                         </button>
                         <div ref={callContainerRef} className="relative">
@@ -998,7 +1636,7 @@ function ChatConversation() {
                             <button
                               onClick={endCall}
                               ref={buttonRef}
-                              className="px-5 py-2.5 bg-red-500 text-black text-sm font-medium rounded-full"
+                              className="px-4 py-2 bg-red-500 hover:bg-red-600 transition-colors text-black text-xs font-semibold rounded-full"
                             >
                               End Call
                             </button>
@@ -1006,20 +1644,26 @@ function ChatConversation() {
                             <button
                               onClick={startAgent}
                               ref={buttonRef}
-                              className="px-5 py-2.5 bg-emerald-500 text-black text-sm font-medium rounded-full"
+                              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 transition-colors text-black text-xs font-semibold rounded-full"
                             >
                               Start Call
                             </button>
                           )}
                         </div>
+                        {!callEnd && !codingMode && (
+                          <button
+                            onClick={handleReset}
+                            className="px-4 py-2 rounded-full border border-white/20 hover:bg-white/10 transition-colors text-white text-xs font-semibold tracking-wide"
+                          >
+                            RESET
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
               </Card>
             </div>
-            {/* Use handleReset here */}
-            {!callEnd && <CallNav onReset={handleReset} />}
           </div>
         </>
       ) : (
