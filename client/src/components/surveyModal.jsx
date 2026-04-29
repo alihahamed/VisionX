@@ -238,7 +238,7 @@ function SurveyModal() {
                         <SelectTrigger ref={expRef} onKeyDown={(e) => handleKeyDown(e, 2)} className="w-full bg-transparent border-0 border-b-2 border-zinc-700 rounded-none text-black text-2xl py-2 px-0 h-auto focus:border-black focus:ring-0">
                           <SelectValue placeholder="Select Level..." />
                         </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectContent className="bg-zinc-900 border-zinc-700 z-[300]">
                           <SelectItem value="No experience" className="text-white focus:bg-zinc-800">No experience</SelectItem>
                           <SelectItem value="Junior" className="text-white focus:bg-zinc-800">Junior (0-2 Years)</SelectItem>
                           <SelectItem value="Mid" className="text-white focus:bg-zinc-800">Mid-Level (2-5 Years)</SelectItem>
@@ -288,8 +288,18 @@ function SurveyModal() {
                     </div>
                   )}
 
-                  <div className="pt-2 text-zinc-800 text-sm animate-pulse">
-                    Press Enter ↵ to {currentStep === 4 ? "start interview" : "continue"}
+                  <div className="pt-2 flex items-center justify-between">
+                    <div className="text-zinc-800 text-sm animate-pulse">
+                      Press Enter ↵ to {currentStep === 4 ? "start interview" : "continue"}
+                    </div>
+                    {currentStep > 1 && (
+                      <button
+                        onClick={() => setCurrentStep((prev) => prev - 1)}
+                        className="text-sm font-medium text-zinc-500 hover:text-black transition-colors"
+                      >
+                        ← Back
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

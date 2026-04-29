@@ -48,7 +48,7 @@ const InterviewBackground = React.memo(() => {
         bendStrength={-1}
         interactive={true}
         parallax={false}
-        linesGradient={["#0f172a", "#1e293b", "#334155", "#0f172a"]}
+        linesGradient={["#1E3A5F", "#2D6A9F", "#5BA4CF", "#B8D9F0"]}
       />
     </div>
   );
@@ -70,26 +70,9 @@ const CallNav = React.memo(({ onReset }) => {
   );
 });
 
-const HomeNav = React.memo(() => {
-  return (
-    <PillNav
-      logo={ghost}
-      items={[{ label: "How It Works", href: "/" }]}
-      className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 home-nav"
-      ease="power2.easeOut"
-      baseColor="white"
-      pillColor="black"
-      hoveredPillTextColor="black"
-      pillTextColor="white"
-      animationDelay={6.1}
-    />
-  );
-});
-
 // Give it a display name for debugging
 InterviewBackground.displayName = "InterviewBackground";
 CallNav.displayName = "CallNav";
-HomeNav.displayName = "HomeNav";
 
 const ReportView = ({ interviewReport, handleDownloadReport, handleCloseReport }) => {
   const containerRef = useRef(null);
@@ -130,7 +113,7 @@ const ReportView = ({ interviewReport, handleDownloadReport, handleCloseReport }
   if (!interviewReport) return null;
 
   return (
-    <div ref={containerRef} className="fixed inset-0 z-[100] bg-black text-white overflow-y-auto pb-20">
+    <div ref={containerRef} className="fixed inset-0 z-[100] bg-black text-white overflow-y-auto pb-20 font-outfit">
       <div className="report-content max-w-[800px] mx-auto p-8 md:p-14 mt-10 md:mt-16 space-y-10 bg-[#030303] border border-white/5 shadow-2xl relative overflow-hidden">
         {/* Subtle background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-40 bg-zinc-800/10 blur-[100px] pointer-events-none" />
@@ -1682,26 +1665,7 @@ function ChatConversation() {
             </p>
           </div>
 
-          <div className="gap-3 flex justify-center items-center mb-5 z-10 techPills">
-            <HoverBorderGradient
-              containerClassName="rounded-full"
-              className="bg-white/10 text-white text-xs px-4 py-1.5"
-            >
-              React
-            </HoverBorderGradient>
-            <HoverBorderGradient
-              containerClassName="rounded-full"
-              className="bg-white/10 text-white text-xs px-4 py-1.5"
-            >
-              NodeJs
-            </HoverBorderGradient>
-            <HoverBorderGradient
-              containerClassName="rounded-full"
-              className="bg-white/10 text-white text-xs px-4 py-1.5"
-            >
-              SLM's
-            </HoverBorderGradient>
-          </div>
+
 
           <div className="flex items-center justify-center">
             <Button
@@ -1722,7 +1686,7 @@ function ChatConversation() {
               </div>
             </Button>
           </div>
-          <HomeNav />
+
         </WavyBackground>
       )}
     </div>
