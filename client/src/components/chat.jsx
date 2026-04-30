@@ -261,6 +261,8 @@ const ReportView = ({ interviewReport, handleDownloadReport, handleCloseReport }
   );
 };
 
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
 function ChatConversation() {
   const {
     addMessage,
@@ -585,7 +587,7 @@ function ChatConversation() {
     if (!hasAnyMark) return;
 
     try {
-      await fetch("http://localhost:3021/api/voice-telemetry", {
+      await fetch(`${API_BASE}/api/voice-telemetry`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -902,7 +904,7 @@ function ChatConversation() {
 
        // fetch instructions (RAG questions/answer data) and token response for verification for deepgram
       const [instructionsResponse, tokenResponse] = await Promise.all([
-        fetch("http://localhost:3021/api/get-voice-context", {
+        fetch(`${API_BASE}/api/get-voice-context`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -910,7 +912,7 @@ function ChatConversation() {
             sessionId: voiceSessionIdRef.current,
           }),
         }),
-        fetch("http://localhost:3021/api/get-agent-token"),
+        fetch(`${API_BASE}/api/get-agent-token`),
       ]);
 
       const { instructions } = await instructionsResponse.json();
